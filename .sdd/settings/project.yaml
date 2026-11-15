@@ -1,0 +1,24 @@
+projectName: SDLC Manager
+defaultLanguage: es-LATAM
+codeIdentifierLanguage: en
+canonicalSddPath: .sdd
+sourcePath: src/sdlc_manager
+testPath: tests
+database:
+  engine: SQLite
+  migrationTool: Alembic
+runtime:
+  python: ">=3.12"
+  transport: stdio
+quality:
+  commands:
+    - uv run pytest
+    - uv run ruff check .
+    - uv run ruff format --check .
+    - uv run mypy src
+  dockerCommand: docker build -t sdlc-manager:latest .
+security:
+  networkRequiredAtRuntime: false
+  externalServicesAllowed: false
+  dynamicCodeExecutionAllowed: false
+

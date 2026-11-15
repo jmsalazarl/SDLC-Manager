@@ -1,0 +1,15 @@
+{
+  "createdAt": "2026-11-11T01:27:58.214415+00:00",
+  "files": [
+    {
+      "contentFile": "files/0001.bin",
+      "contentHash": "sha256:2ead56a3d7c00fa57b998392a5e0baa66aa119eb0ce7d3fbc95b3b5bd50eed0e",
+      "mode": 436,
+      "size": 3224,
+      "sourcePath": "/home/jsalazar/fuentes/MyProjects/SDLC-Manager/AGENTS.md"
+    }
+  ],
+  "includeContent": true,
+  "label": "provider-migration",
+  "snapshotId": "SNP-01a1c838-0a05-792a-8798-388dd26483d0"
+}

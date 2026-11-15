@@ -1,0 +1,14 @@
+specId: SPEC-006
+name: multiagent-integrations
+version: 1.0.0
+status: implemented
+owner: project-owner
+createdAt: "2026-11-15"
+updatedAt: "2026-11-15"
+documents:
+  - requirements.md
+  - design.md
+  - tasks.md
+dependencies:
+  - SPEC-005
+  - SPEC-004

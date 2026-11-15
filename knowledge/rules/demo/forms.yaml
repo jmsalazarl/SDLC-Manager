@@ -1,0 +1,20 @@
+id: SDLC-001
+name: Compatibilidad de formularios
+description: Exige comparar la version base de desarrollo con la version vigente de produccion y validar compatibilidad.
+version: "1.0.0"
+severity: CRITICAL
+trigger:
+  event: file_change
+  file_extensions:
+    - .wpx
+scope: {}
+conditions: {}
+required_evidence:
+  - production_version
+  - comparison_result
+  - compatibility_validation
+target_gate: task_completion
+action: block
+approval_status: approved
+enabled: true
+

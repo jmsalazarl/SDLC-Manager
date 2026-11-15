@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "sdlc-manager": {
+        "type": "local",
+        "command": ["uv", "run", "--frozen", "sdlc-manager"],
+        "cwd": ".",
+        "codemode": false
+      }
+    }
+  },
+  "instructions": ["./integrations/common/sdlc-manager-instructions.md"]
+}

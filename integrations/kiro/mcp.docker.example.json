@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "sdlc-manager": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network",
+        "none",
+        "-v",
+        "sdlc-manager-data:/app/data",
+        "sdlc-manager:latest"
+      ],
+      "disabled": false
+    }
+  }
+}
+

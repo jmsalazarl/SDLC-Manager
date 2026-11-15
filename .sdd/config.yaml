@@ -1,0 +1,20 @@
+schemaVersion: "1.0"
+projectId: SDLC-MANAGER
+canonicalRoot: .sdd
+project:
+  id: SDLC-MANAGER
+  name: SDLC Manager
+  purpose: Servidor MCP local para gobernanza y conocimiento del SDLC.
+canonicalStructure: .sdd
+language: es-LATAM
+specsPath: .sdd/specs
+defaultSpec: .sdd/specs/knowledge-architecture
+workflow:
+  order:
+    - requirements.md
+    - design.md
+    - tasks.md
+  implementationRequiresCompletedDocuments: true
+  testCheckpointsFromTasks: true
+status: implemented
+

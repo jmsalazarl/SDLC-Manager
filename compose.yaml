@@ -1,0 +1,14 @@
+services:
+  sdlc-manager:
+    build:
+      context: .
+    image: sdlc-manager:latest
+    stdin_open: true
+    tty: false
+    network_mode: none
+    volumes:
+      - sdlc-manager-data:/app/data
+
+volumes:
+  sdlc-manager-data:
+

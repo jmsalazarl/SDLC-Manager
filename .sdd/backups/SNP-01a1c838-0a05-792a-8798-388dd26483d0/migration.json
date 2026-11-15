@@ -1,0 +1,13 @@
+{
+  "entries": [
+    {
+      "provider": "shared",
+      "sourceHash": "sha256:2ead56a3d7c00fa57b998392a5e0baa66aa119eb0ce7d3fbc95b3b5bd50eed0e",
+      "sourcePath": "AGENTS.md",
+      "status": "copied",
+      "targetPath": ".sdd/steering/AGENTS.md"
+    }
+  ],
+  "snapshotId": "SNP-01a1c838-0a05-792a-8798-388dd26483d0",
+  "sourceRoot": "/home/jsalazar/fuentes/MyProjects/SDLC-Manager"
+}

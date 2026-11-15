@@ -1,0 +1,115 @@
+code: default-sdlc
+name: SDLC predeterminado
+version: "1.0.0"
+status: ACTIVE
+source: knowledge/sdlc/default.yaml
+stages:
+  - code: story_refinement
+    name: Refinamiento de HU
+    description: Clarificar alcance y contexto de la historia.
+    order: 1
+    required: true
+    gates:
+      - code: refinement_complete
+        name: Refinamiento completo
+        required: true
+        checks: [description_present]
+        conditions: {}
+        enabled: true
+  - code: acceptance_criteria
+    name: Criterios de aceptacion
+    description: Verificar criterios claros y comprobables.
+    order: 2
+    required: true
+    gates:
+      - code: acceptance_ready
+        name: Criterios listos
+        required: true
+        checks: [acceptance_criteria_present]
+        conditions: {}
+        enabled: true
+  - code: dependency_review
+    name: Revision de dependencias
+    description: Revisar dependencias obligatorias antes de desarrollar.
+    order: 3
+    required: true
+    gates:
+      - code: dependencies_ready
+        name: Dependencias listas
+        required: true
+        checks: [dependencies_resolved]
+        conditions: {}
+        enabled: true
+  - code: design_approval
+    name: Aprobacion de diseno
+    description: Revisar el diseno cuando el cambio lo requiera.
+    order: 4
+    required: true
+    gates:
+      - code: design_approved
+        name: Diseno aprobado
+        required: false
+        checks: [design_evidence]
+        conditions: {design_required: true}
+        enabled: true
+  - code: development
+    name: Desarrollo
+    description: Ejecutar la implementacion de la historia.
+    order: 5
+    required: true
+    gates:
+      - code: development_start
+        name: Inicio de desarrollo
+        required: true
+        checks: [story_ready]
+        conditions: {}
+        enabled: true
+  - code: technical_review
+    name: Revision tecnica
+    description: Revisar calidad y compatibilidad del cambio.
+    order: 6
+    required: true
+    gates:
+      - code: technical_review
+        name: Revision tecnica completada
+        required: true
+        checks: [review_evidence]
+        conditions: {}
+        enabled: true
+  - code: testing
+    name: Testing
+    description: Ejecutar y registrar pruebas verificables.
+    order: 7
+    required: true
+    gates:
+      - code: testing_complete
+        name: Testing completado
+        required: true
+        checks: [test_evidence]
+        conditions: {}
+        enabled: true
+  - code: deployment_preparation
+    name: Preparacion para despliegue
+    description: Revisar evidencias necesarias para despliegue.
+    order: 8
+    required: true
+    gates:
+      - code: deployment_ready
+        name: Despliegue preparado
+        required: true
+        checks: [deployment_evidence]
+        conditions: {}
+        enabled: true
+  - code: closure
+    name: Cierre
+    description: Confirmar cierre tecnico y funcional.
+    order: 9
+    required: true
+    gates:
+      - code: task_completion
+        name: Cierre tecnico
+        required: true
+        checks: [closure_evidence]
+        conditions: {}
+        enabled: true
+exceptions: []

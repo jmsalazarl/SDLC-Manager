@@ -1,0 +1,28 @@
+specId: SPEC-001
+name: mcp-server-mvp
+version: 1.0.1
+status: implemented
+owner: project-owner
+createdAt: "2026-11-10"
+updatedAt: "2026-11-12"
+documents:
+  - requirements.md
+  - design.md
+  - tasks.md
+implementation:
+  sourcePath: src/sdlc_manager
+  testPath: tests
+  migrationPath: migrations
+  knowledgePath: knowledge
+  documentationPath: docs
+  deliveryModes:
+    - native-uv
+    - docker
+decisions:
+  - .sdd/adrs/0001-eleccion-mcp.md
+  - .sdd/adrs/0002-eleccion-python.md
+  - .sdd/adrs/0003-sqlite-inicial.md
+  - .sdd/adrs/0004-politicas-deterministas.md
+  - .sdd/adrs/0005-docker-local.md
+  - .sdd/adrs/0006-independencia-kiro.md
+

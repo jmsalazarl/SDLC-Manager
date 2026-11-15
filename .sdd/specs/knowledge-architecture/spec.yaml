@@ -1,0 +1,13 @@
+specId: SPEC-002
+name: knowledge-architecture
+version: 1.0.0
+status: implemented
+owner: project-owner
+createdAt: "2026-11-15"
+updatedAt: "2026-11-15"
+documents:
+  - requirements.md
+  - design.md
+  - tasks.md
+dependencies:
+  - SPEC-001

@@ -1,0 +1,23 @@
+id: SDLC-003
+name: Preparacion de historia de usuario
+description: Impide iniciar desarrollo cuando faltan criterios de aceptacion o dependencias obligatorias resueltas.
+version: "1.0.0"
+severity: HIGH
+trigger:
+  event: development_start
+scope: {}
+conditions:
+  any:
+    - field: acceptance_criteria_present
+      operator: equals
+      value: false
+    - field: dependencies_resolved
+      operator: equals
+      value: false
+required_evidence: []
+target_gate: development_start
+action: block
+approval_status: approved
+workflow_checks: [story_ready]
+enabled: true
+

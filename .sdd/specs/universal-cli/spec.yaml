@@ -1,0 +1,13 @@
+specId: SPEC-005
+name: universal-cli
+version: 1.0.0
+status: implemented
+owner: project-owner
+createdAt: "2026-11-15"
+updatedAt: "2026-11-15"
+documents:
+  - requirements.md
+  - design.md
+  - tasks.md
+dependencies:
+  - SPEC-004

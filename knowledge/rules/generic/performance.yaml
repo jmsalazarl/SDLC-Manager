@@ -1,0 +1,18 @@
+id: SDLC-002
+name: Rendimiento de reportes
+description: Recomienda revisar tiempos, plan de ejecucion, indices, volumen, etapas y equivalencia de resultados.
+version: "1.0.0"
+severity: MEDIUM
+trigger:
+  event: report_change
+  components:
+    - reporting
+    - database
+scope: {}
+conditions: {}
+required_evidence: []
+target_gate: task_completion
+action: warn
+approval_status: approved
+enabled: true
+

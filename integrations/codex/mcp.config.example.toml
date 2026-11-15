@@ -1,0 +1,4 @@
+[mcp_servers.sdlc-manager]
+command = "uv"
+args = ["run", "--frozen", "sdlc-manager"]
+cwd = "."

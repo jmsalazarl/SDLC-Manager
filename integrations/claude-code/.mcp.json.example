@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sdlc-manager": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--frozen", "sdlc-manager"]
+    }
+  }
+}

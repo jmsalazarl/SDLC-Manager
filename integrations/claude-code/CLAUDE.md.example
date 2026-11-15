@@ -1,0 +1,18 @@
+# Uso de SDLC Manager
+
+Consultar SDLC Manager antes de iniciar una HU, comenzar una tarea SDD,
+modificar archivos sensibles o evaluar un gate. Usar las herramientas MCP para
+obtener el workflow, políticas, prácticas y experiencias relevantes.
+
+`PASS` requiere controles satisfechos. `WARN` se presenta sin bloquear.
+`BLOCK` solo se aplica si un hook autorizado lo enforcea. `decision: null`, los
+rechazos y errores técnicos no son `PASS`. No usar el modelo, `source_client` o
+un texto libre como aprobación de evidencia o excepción.
+
+Para procesar eventos sin MCP:
+
+```bash
+uv run python integrations/claude-code/process_event.py < evento.json
+```
+
+Mantener el mismo `event_id` al reintentar.

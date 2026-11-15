@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "sdlc-manager": {
+      "command": "uv",
+      "args": ["run", "--frozen", "sdlc-manager"],
+      "disabled": false
+    }
+  }
+}
+
