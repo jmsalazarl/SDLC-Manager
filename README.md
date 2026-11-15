@@ -41,23 +41,75 @@ La lógica de negocio se ejecuta desde servicios Python independientes del trans
 - `uv`.
 - Docker, únicamente para la ejecución contenedorizada.
 
+## Inicio rápido
+
+SDLC Manager usa transporte MCP `stdio`. Por eso, **no se inicia como un
+servicio permanente ni requiere un puerto**: el cliente MCP inicia el proceso
+cuando necesita utilizarlo y lo finaliza al cerrar la sesión.
+
+El flujo mínimo es:
+
+1. Instalar el proyecto con `uv` o construir la imagen Docker.
+2. Configurar SDLC Manager en el cliente MCP.
+3. Reiniciar o recargar el cliente.
+4. Confirmar que el cliente descubra `health_check` y las demás herramientas.
+5. Invocar las herramientas desde el cliente. Las políticas no se ejecutan por
+   el solo hecho de instalar el servidor.
+
+La configuración MCP tampoco activa eventos automáticamente. Para activación
+automática se requiere un Hook, plugin o script que invoque el CLI; esas
+capacidades se documentan por cliente en [integrations/](integrations/).
+
 ## Instalación nativa
 
+Requiere Python 3.12 o superior y `uv`.
+
 ```bash
-uv sync
+git clone <URL_DEL_REPOSITORIO>
+cd SDLC-Manager
+uv sync --frozen
 cp .env.example .env
+mkdir -p data
 uv run alembic upgrade head
 ```
 
-La instalación crea únicamente el esquema y la plantilla SDLC predeterminada. La memoria, los proyectos, las historias y las evidencias comienzan vacíos.
+La instalación crea únicamente el esquema y la plantilla SDLC predeterminada.
+La memoria, los proyectos, las historias y las evidencias comienzan vacíos.
 
-## Ejecución nativa
+Después de instalar, **no es necesario dejar este comando corriendo**. Configure
+el cliente MCP con el comando nativo indicado en [Configuración MCP](#configuración-mcp).
 
-El servidor usa `stdio`; no abre puertos y reserva `stdout` para el protocolo MCP.
+Para una comprobación manual del servidor:
 
 ```bash
 uv run sdlc-manager
 ```
+
+Este proceso queda esperando mensajes MCP. `stdout` pertenece al protocolo y
+los logs se envían a `stderr`.
+
+## Instalación con Docker
+
+Requiere Docker.
+
+```bash
+docker build -t sdlc-manager:latest .
+docker volume create sdlc-manager-data
+```
+
+Luego configure el cliente MCP usando el ejemplo Docker. El cliente iniciará
+un contenedor por sesión y el volumen conservará la base SQLite:
+
+```bash
+docker run --rm -i \
+  --network none \
+  -v sdlc-manager-data:/app/data \
+  sdlc-manager:latest
+```
+
+No ejecute ese comando en segundo plano para conectarlo al cliente; el cliente
+debe administrarlo como un proceso `stdio`. La ejecución manual anterior sirve
+únicamente para diagnóstico.
 
 El directorio de datos predeterminado es `./data`. Se puede cambiar mediante `SDLC_MANAGER_DATABASE_URL`.
 
@@ -70,16 +122,6 @@ printf '%s\n' '{"event_id":"22222222-2222-4222-8222-222222222222","event_type":"
 
 El CLI escribe la respuesta JSON en `stdout` y los logs en `stderr`. Sus códigos de salida están documentados en [docs/universal-cli-validation.md](docs/universal-cli-validation.md).
 
-## Ejecución con Docker
-
-```bash
-docker build -t sdlc-manager:latest .
-docker run --rm -i \
-  --network none \
-  -v sdlc-manager-data:/app/data \
-  sdlc-manager:latest
-```
-
 Docker Compose está disponible para desarrollo local, pero no es necesario para conectar un cliente MCP:
 
 ```bash
@@ -90,7 +132,13 @@ Consulta [docs/docker.md](docs/docker.md) para persistencia y migraciones.
 
 ## Configuración MCP
 
-Hay ejemplos para ejecución nativa y Docker en [integrations/kiro/](integrations/kiro/). La configuración nativa esperada es:
+Elija **una** de estas modalidades y configure el cliente que utilice. No
+configure simultáneamente el proceso nativo y Docker para el mismo cliente.
+
+### Configuración nativa
+
+Use esta configuración cuando `uv` y el repositorio estén disponibles en la
+computadora donde corre el cliente:
 
 ```json
 {
@@ -104,7 +152,45 @@ Hay ejemplos para ejecución nativa y Docker en [integrations/kiro/](integration
 }
 ```
 
-Conectar el servidor no activa invocaciones automáticas. Los Hooks o integraciones explícitas deben decidir cuándo llamar cada herramienta.
+El ejemplo completo está en
+[integrations/kiro/mcp.native.example.json](integrations/kiro/mcp.native.example.json).
+
+### Configuración Docker
+
+Use esta modalidad cuando el cliente deba ejecutar el servidor sin instalar
+Python ni las dependencias del proyecto:
+
+```json
+{
+  "mcpServers": {
+    "sdlc-manager": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i", "--network", "none",
+        "-v", "sdlc-manager-data:/app/data",
+        "sdlc-manager:latest"
+      ],
+      "disabled": false
+    }
+  }
+}
+```
+
+El ejemplo completo está en
+[integrations/kiro/mcp.docker.example.json](integrations/kiro/mcp.docker.example.json).
+
+### Otros clientes
+
+Las configuraciones e instrucciones específicas están disponibles en:
+
+- [Kiro](integrations/kiro/README.md)
+- [Codex](integrations/codex/README.md)
+- [OpenCode](integrations/opencode/README.md)
+- [Claude Code](integrations/claude-code/README.md)
+
+Conectar el servidor permite descubrir herramientas, pero no activa
+invocaciones automáticas. Los Hooks, plugins o scripts explícitos deben decidir
+cuándo llamar cada herramienta.
 
 ## Ejemplo de uso
 
