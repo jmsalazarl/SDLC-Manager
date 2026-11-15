@@ -25,12 +25,21 @@ Las políticas se declaran en YAML y se validan con Pydantic. El motor de polít
 
 ## Arquitectura
 
-```text
-Cliente MCP --stdio--> MCP Interface --> Application Services
-                                             |        |
-                                      Policy Engine  Experience/Evidence
-                                             |        |
-                                      SQLite + Alembic
+```mermaid
+flowchart LR
+    C[Cliente MCP] -->|stdio| M[Interfaz MCP]
+    H[Hooks o scripts] -->|stdin JSON| L[CLI universal]
+    L --> E[SDLC Event Processor]
+    M --> A[Application Services]
+    E --> A
+    A --> W[Workflow Engine]
+    A --> P[Policy Engine]
+    A --> R[Practice y Experience Engine]
+    A --> V[Evidence Engine]
+    W --> D[(SQLite + Alembic)]
+    P --> D
+    R --> D
+    V --> D
 ```
 
 La lógica de negocio se ejecuta desde servicios Python independientes del transporte MCP. Los detalles están en [docs/architecture.md](docs/architecture.md).
