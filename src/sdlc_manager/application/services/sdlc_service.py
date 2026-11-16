@@ -551,7 +551,7 @@ class SdlcService:
     def _infer_event(gate: str, changed_files: list[str]) -> str:
         if gate == "development_start":
             return "development_start"
-        if any(file.lower().endswith(".wpx") for file in changed_files):
+        if changed_files:
             return "file_change"
         return gate
 

@@ -17,7 +17,7 @@ def load_engine() -> PolicyEngine:
 
 def test_loads_demo_policies() -> None:
     engine = load_engine()
-    assert {item.id for item in engine.policies} == {"SDLC-001", "SDLC-002", "SDLC-003"}
+    assert {item.id for item in engine.policies} == {"DEMO-001", "SDLC-002", "SDLC-003"}
 
 
 def test_invalid_yaml_is_identifiable(tmp_path: Path) -> None:
@@ -29,9 +29,9 @@ def test_invalid_yaml_is_identifiable(tmp_path: Path) -> None:
 
 def test_extension_rule_is_applicable() -> None:
     rules = load_engine().applicable_rules(
-        {"event": "file_change", "changed_files": ["forms/customer.wpx"]}
+        {"event": "file_change", "changed_files": ["artifacts/sample.artifact"]}
     )
-    assert [item.rule.id for item in rules] == ["SDLC-001"]
+    assert [item.rule.id for item in rules] == ["DEMO-001"]
 
 
 def test_non_matching_event_is_not_applicable() -> None:
@@ -50,16 +50,16 @@ def test_invalid_operator_is_rejected() -> None:
 
 def test_block_changes_to_pass_after_verified_evidence() -> None:
     engine = load_engine()
-    context = {"event": "file_change", "changed_files": ["forms/customer.wpx"]}
-    blocked = engine.evaluate_gate("task_completion", context, {"SDLC-001": set()}, uuid4())
+    context = {"event": "file_change", "changed_files": ["artifacts/sample.artifact"]}
+    blocked = engine.evaluate_gate("task_completion", context, {"DEMO-001": set()}, uuid4())
     passed = engine.evaluate_gate(
         "task_completion",
         context,
         {
-            "SDLC-001": {
-                "production_version",
+            "DEMO-001": {
+                "baseline_reference",
                 "comparison_result",
-                "compatibility_validation",
+                "compatibility_check",
             }
         },
         uuid4(),

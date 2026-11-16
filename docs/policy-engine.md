@@ -5,17 +5,17 @@
 Cada archivo declara una regla independiente:
 
 ```yaml
-id: SDLC-001
-name: Compatibilidad de formularios
+id: DEMO-001
+name: Compatibilidad de artefactos
 description: Exige evidencias antes del cierre tecnico.
 version: "1.0.0"
 severity: CRITICAL
 trigger:
   event: file_change
-  file_extensions: [.wpx]
+  file_extensions: [.artifact]
 scope: {}
 conditions: {}
-required_evidence: [production_version, comparison_result]
+required_evidence: [baseline_reference, comparison_result]
 target_gate: task_completion
 action: block
 approval_status: approved

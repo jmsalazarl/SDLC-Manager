@@ -196,4 +196,23 @@ specifications:
     validation:
       - docs/multiagent-integrations-validation.md
       - .sdd/audit/2026-11-15-multiagent-integrations.md
+  SPEC-007:
+    document: .sdd/specs/knowledge-pack-sanitization
+    requirements:
+      - .sdd/specs/knowledge-pack-sanitization/requirements.md
+    design:
+      - .sdd/specs/knowledge-pack-sanitization/design.md
+    tasks:
+      - .sdd/specs/knowledge-pack-sanitization/tasks.md
+    implementation:
+      - src/sdlc_manager/application/services/sdlc_service.py
+      - knowledge/rules/demo/forms.yaml
+    tests:
+      - tests/unit/test_policy_engine.py
+      - tests/integration/test_application.py
+      - tests/integration/test_event_processor.py
+      - tests/integration/test_mcp_protocol.py
+    validation:
+      - .sdd/audit/2026-11-15-knowledge-pack-sanitization.md
+      - .sdd/adrs/0010-conocimiento-declarativo-sin-inferencia-corporativa.md
 

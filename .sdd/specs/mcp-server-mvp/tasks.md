@@ -73,7 +73,7 @@ Este plan registra la implementación ejecutada del MVP. Todas las tareas están
   - _Requerimiento: Requirement 2, Requirement 5_
   - _Capa: Engines / Application_
   - _Depende de: 4.2, 3.3_
-- [x] 4.4 Crear `SDLC-001`, `SDLC-002` y `SDLC-003` en paquetes YAML genéricos y de demostración.
+- [x] 4.4 Crear `DEMO-001`, `SDLC-002` y `SDLC-003` en paquetes YAML genéricos y de demostración.
   - _Requerimiento: Requirement 3_
   - _Capa: Knowledge_
   - _Depende de: 4.1_

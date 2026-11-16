@@ -76,13 +76,13 @@ El producto complementa a los clientes MCP y a Kiro; no reemplaza al asistente, 
 
 ### Requirement 3: Reglas de demostración
 
-**User Story:** Como equipo que valida el MVP, quiero reproducir controles ficticios de formularios, rendimiento y preparación de HU, para comprobar el motor sin información corporativa.
+**User Story:** Como equipo que valida el MVP, quiero reproducir controles ficticios de artefactos, rendimiento y preparación de HU, para comprobar el motor sin información corporativa.
 
 #### Acceptance Criteria
 
-1. WHEN un evento de cambio incluye un archivo `.wpx`, THE Policy_Engine SHALL aplicar `SDLC-001` en `task_completion` y SHALL requerir `production_version`, `comparison_result` y `compatibility_validation`.
-2. WHEN `SDLC-001` no tiene todas sus evidencias verificadas, THE Policy_Engine SHALL emitir `BLOCK`.
-3. WHEN `SDLC-001` tiene todas sus evidencias verificadas, THE Policy_Engine SHALL permitir `PASS` si no hay otra infracción.
+1. WHEN un evento de cambio incluye un archivo `.artifact`, THE Policy_Engine SHALL aplicar `DEMO-001` en `task_completion` y SHALL requerir `baseline_reference`, `comparison_result` y `compatibility_check`.
+2. WHEN `DEMO-001` no tiene todas sus evidencias verificadas, THE Policy_Engine SHALL emitir `BLOCK`.
+3. WHEN `DEMO-001` tiene todas sus evidencias verificadas, THE Policy_Engine SHALL permitir `PASS` si no hay otra infracción.
 4. WHEN un evento `report_change` afecta los componentes `reporting` o `database`, THE Policy_Engine SHALL aplicar `SDLC-002` y emitir `WARN`.
 5. WHEN inicia el desarrollo de una HU sin criterios de aceptación o con dependencias no resueltas, THE Policy_Engine SHALL aplicar `SDLC-003` y emitir `BLOCK` en `development_start`.
 

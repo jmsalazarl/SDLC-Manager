@@ -41,19 +41,19 @@ def make_event(
     )
 
 
-def test_valid_file_event_detects_forms_policy(container) -> None:
+def test_valid_file_event_detects_generic_policy(container) -> None:
     project = container.service.create_project("Event project")
     event = make_event(
         "file_changed",
         project_id=project.id,
-        affected_files=["formularios/Pagos.wpx"],
+        affected_files=["artifacts/sample.artifact"],
     )
 
     result = container.event_processor.process(event)
 
     assert result.status == EventProcessingStatus.PROCESSED
     assert result.decision is None
-    assert "SDLC-001" in result.triggered_rules
+    assert "DEMO-001" in result.triggered_rules
 
 
 def test_contextual_practice_returns_warning_without_block(container) -> None:

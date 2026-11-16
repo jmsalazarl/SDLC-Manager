@@ -15,7 +15,7 @@ Se agregó un `BeforeValidator` limitado a los campos UUID de los DTO. Las caden
 ## Evidencia
 
 - Payload positivo de `get_applicable_rules` procesado por `stdio`.
-- Regla `SDLC-001` detectada para `formularios/Pagos.wpx`.
+- Regla `DEMO-001` detectada para `artifacts/sample.artifact`.
 - Payloads con UUID vacío y mal formado rechazados por MCP.
 - DTOs UUID revisados mediante pruebas unitarias.
 - `PolicyEngine` sin cambios funcionales.

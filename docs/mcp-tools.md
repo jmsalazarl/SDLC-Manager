@@ -51,7 +51,7 @@ Entrada conceptual:
   "gate": "task_completion",
   "context": {
     "event": "file_change",
-    "changed_files": ["forms/customer.wpx"]
+    "changed_files": ["artifacts/sample.artifact"]
   }
 }
 ```
@@ -62,8 +62,8 @@ Respuesta cuando faltan evidencias:
 {
   "result": "BLOCK",
   "gate": "task_completion",
-  "triggered_rules": ["SDLC-001"],
-  "missing_evidence": ["production_version", "comparison_result", "closure_evidence"],
+  "triggered_rules": ["DEMO-001"],
+  "missing_evidence": ["baseline_reference", "comparison_result", "closure_evidence"],
   "pending_evidence": [],
   "rejected_evidence": [],
   "not_applicable_checks": [],

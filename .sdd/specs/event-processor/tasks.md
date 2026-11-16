@@ -48,7 +48,7 @@ Implementar el contrato normalizado, el procesador de aplicación, persistencia 
 - [x] 6. Crear pruebas funcionales y de compatibilidad.
   - [x] 6.1 Probar eventos válidos, inválidos y no soportados.
   - [x] 6.2 Probar duplicados, conflictos, persistencia y aislamiento.
-  - [x] 6.3 Probar formularios, prácticas, HU, evidencias y gates.
+  - [x] 6.3 Probar artefactos, prácticas, HU, evidencias y gates.
   - [x] 6.4 Probar MCP, migración y Docker.
   - _Requerimientos: Todos_
   - _Capa: QA_

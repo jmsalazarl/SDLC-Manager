@@ -4,7 +4,7 @@
 
 Los DTO de entrada de la interfaz MCP usaban campos anotados directamente como `UUID` y configuraban `ConfigDict(strict=True)`. En Pydantic v2, el modo estricto no convierte una cadena JSON a `uuid.UUID`; por eso el argumento ya fallaba durante la validación del modelo generado para `get_applicable_rules`, antes de llegar al servicio de aplicación.
 
-El rechazo no provenía del motor de políticas ni de la regla `SDLC-001`.
+El rechazo no provenía del motor de políticas ni de la regla `DEMO-001`.
 
 ## Corrección
 
@@ -29,13 +29,13 @@ La prueba de protocolo inicia el servidor mediante `stdio`, descubre la herramie
     "project_id": "00e57f27-4f4c-47d0-be96-84f1b7162a99",
     "event": "file_change",
     "stage": "implementation",
-    "changed_files": ["formularios/Pagos.wpx"],
+    "changed_files": ["artifacts/sample.artifact"],
     "context": {}
   }
 }
 ```
 
-El resultado no contiene error de validación y detecta `SDLC-001`. La misma prueba verifica el rechazo de `""` y `"not-a-uuid"`.
+El resultado no contiene error de validación y detecta `DEMO-001`. La misma prueba verifica el rechazo de `""` y `"not-a-uuid"`.
 
 ## Archivos modificados
 

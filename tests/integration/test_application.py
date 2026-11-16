@@ -6,19 +6,21 @@ from sdlc_manager.domain.enums import EvaluationResult, EvidenceStatus
 def test_evaluate_gate_and_evidence_lifecycle(container) -> None:
     service = container.service
     project = service.create_project("Demo")
-    story = service.create_story(project.id, "Actualizar formulario", "Descripcion", ["WHEN ok"])
+    story = service.create_story(
+        project.id, "Actualizar artefacto estructurado", "Descripcion", ["WHEN ok"]
+    )
 
     blocked = service.evaluate_gate(
         project.id,
         story.id,
         "task_completion",
-        {"event": "file_change", "changed_files": ["forms/customer.wpx"]},
+        {"event": "file_change", "changed_files": ["artifacts/sample.artifact"]},
     )
     assert blocked["result"] == EvaluationResult.BLOCK
     assert set(blocked["missing_evidence"]) == {
-        "production_version",
+        "baseline_reference",
         "comparison_result",
-        "compatibility_validation",
+        "compatibility_check",
         "closure_evidence",
     }
 
@@ -26,7 +28,7 @@ def test_evaluate_gate_and_evidence_lifecycle(container) -> None:
         evidence = service.register_evidence(
             project.id,
             story.id,
-            "SDLC-001" if evidence_type != "closure_evidence" else "WORKFLOW",
+            "DEMO-001" if evidence_type != "closure_evidence" else "WORKFLOW",
             evidence_type,
             f"record:{evidence_type}",
         )
@@ -37,7 +39,7 @@ def test_evaluate_gate_and_evidence_lifecycle(container) -> None:
         project.id,
         story.id,
         "task_completion",
-        {"event": "file_change", "changed_files": ["forms/customer.wpx"]},
+        {"event": "file_change", "changed_files": ["artifacts/sample.artifact"]},
     )
     assert passed["result"] == EvaluationResult.PASS
 

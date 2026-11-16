@@ -21,7 +21,7 @@ Validación de la implementación de `SdlcEventProcessor`, su contrato normaliza
 
 - Contratos Pydantic estrictos con UUID serializados como texto JSON.
 - Rechazo de UUID inválidos, eventos incompletos y tipos no soportados.
-- Procesamiento de formularios `.wpx` y detección de `SDLC-001`.
+- Procesamiento de artefactos `.artifact` y detección de `DEMO-001`.
 - Advertencias de prácticas aprobadas sin producir `BLOCK`.
 - Bloqueo de HU incompleta.
 - Bloqueo con evidencias pendientes y `PASS` con evidencias verificadas.

@@ -77,7 +77,7 @@ async def test_mcp_stdio_transport_discovers_tools(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_mcp_stdio_accepts_json_uuid_and_detects_forms_policy(
+async def test_mcp_stdio_accepts_json_uuid_and_detects_generic_policy(
     tmp_path: Path,
 ) -> None:
     root = Path(__file__).parents[2]
@@ -127,13 +127,13 @@ async def test_mcp_stdio_accepts_json_uuid_and_detects_forms_policy(
                     "project_id": PROJECT_ID,
                     "event": "file_change",
                     "stage": "implementation",
-                    "changed_files": ["formularios/Pagos.wpx"],
+                    "changed_files": ["artifacts/sample.artifact"],
                     "context": {},
                 }
             },
         )
         assert valid_result.is_error is False
-        assert "SDLC-001" in {rule["id"] for rule in valid_result.structured_content["rules"]}
+        assert "DEMO-001" in {rule["id"] for rule in valid_result.structured_content["rules"]}
 
         event_id = str(uuid4())
         event_result = await client.call_tool(

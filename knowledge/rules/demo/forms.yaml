@@ -1,18 +1,18 @@
-id: SDLC-001
-name: Compatibilidad de formularios
-description: Exige comparar la version base de desarrollo con la version vigente de produccion y validar compatibilidad.
+id: DEMO-001
+name: Compatibilidad de artefactos estructurados
+description: Ejemplo ficticio que exige comparar una referencia base y validar compatibilidad antes del cierre tecnico.
 version: "1.0.0"
 severity: CRITICAL
 trigger:
   event: file_change
   file_extensions:
-    - .wpx
+    - .artifact
 scope: {}
 conditions: {}
 required_evidence:
-  - production_version
+  - baseline_reference
   - comparison_result
-  - compatibility_validation
+  - compatibility_check
 target_gate: task_completion
 action: block
 approval_status: approved

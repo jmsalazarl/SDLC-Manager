@@ -38,7 +38,7 @@ def test_kiro_hook_is_disabled_and_non_blocking_by_default() -> None:
 
 
 def test_normalized_event_preserves_stable_event_id() -> None:
-    native = {"path": "formularios/Pagos.wpx", "session_id": "session-1"}
+    native = {"path": "artifacts/sample.artifact", "session_id": "session-1"}
     first = normalize_file_event(native, "kiro", "00e57f27-4f4c-47d0-be96-84f1b7162a99")
     second = normalize_file_event(native, "kiro", "00e57f27-4f4c-47d0-be96-84f1b7162a99")
 
@@ -85,7 +85,7 @@ def test_kiro_adapter_translates_payload_and_keeps_stdout_json(tmp_path: Path) -
     )
     process = subprocess.run(
         [sys.executable, str(ROOT / "integrations/kiro/kiro_event_adapter.py")],
-        input=json.dumps({"path": "formularios/Pagos.wpx", "session_id": "s-1"}).encode(),
+        input=json.dumps({"path": "artifacts/sample.artifact", "session_id": "s-1"}).encode(),
         capture_output=True,
         cwd=ROOT,
         env=environment,

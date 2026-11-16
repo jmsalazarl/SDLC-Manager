@@ -232,7 +232,8 @@ cuándo llamar cada herramienta.
 ## Ejemplo de uso
 
 1. Invocar `create_project` y `create_user_story` para preparar datos locales.
-2. Invocar `get_applicable_rules` con `event=file_change` y un archivo `.wpx`.
+2. Invocar `get_applicable_rules` con `event=file_change` y los archivos del
+   cambio; las reglas aplicables provienen del `knowledge pack` activo.
 3. Invocar `evaluate_gate` en `task_completion`.
 4. Registrar cada evidencia requerida con `register_evidence`.
 5. Verificarla mediante `verify_evidence` y repetir la evaluación.

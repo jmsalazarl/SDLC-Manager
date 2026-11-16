@@ -44,7 +44,7 @@ STORY_ID = "10e57f27-4f4c-47d0-be96-84f1b7162a99"
             {
                 "project_id": PROJECT_ID,
                 "user_story_id": STORY_ID,
-                "policy_id": "SDLC-001",
+                "policy_id": "DEMO-001",
                 "evidence_type": "comparison_result",
                 "reference": "evidence://comparison/1",
             },

@@ -198,7 +198,7 @@ Para probar el wrapper de Kiro se requiere un UUID de proyecto local:
 
 ```bash
 export SDLC_MANAGER_PROJECT_ID=00e57f27-4f4c-47d0-be96-84f1b7162a99
-printf '%s\n' '{"path":"formularios/Pagos.wpx","session_id":"demo-session"}' | uv run python integrations/kiro/kiro_event_adapter.py
+printf '%s\n' '{"path":"artifacts/sample.artifact","session_id":"demo-session"}' | uv run python integrations/kiro/kiro_event_adapter.py
 ```
 
 Los comandos de cada cliente se documentan en su `README.md`. La instalación

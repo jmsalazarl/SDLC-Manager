@@ -139,7 +139,7 @@ La salida de evaluate_gate se amplía de forma compatible con campos opcionales:
 {
   "result": "BLOCK",
   "gate": "testing_complete",
-  "triggered_rules": ["SDLC-001"],
+  "triggered_rules": ["DEMO-001"],
   "missing_evidence": ["test_evidence"],
   "pending_evidence": [],
   "rejected_evidence": [],
