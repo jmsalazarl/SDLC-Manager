@@ -69,6 +69,22 @@ La configuración MCP tampoco activa eventos automáticamente. Para activación
 automática se requiere un Hook, plugin o script que invoque el CLI; esas
 capacidades se documentan por cliente en [integrations/](integrations/).
 
+## Directorio de ejecución
+
+Los comandos de instalación nativa, migraciones, construcción Docker y
+Docker Compose deben ejecutarse desde la raíz del repositorio, es decir, desde
+el directorio que contiene `pyproject.toml`, `Dockerfile`, `alembic.ini` y
+`knowledge/`:
+
+```bash
+cd /ruta/al/SDLC-Manager
+```
+
+En los ejemplos siguientes, mantenga abierta esa terminal ubicada en la raíz.
+El cliente MCP también debe iniciar el servidor con esa raíz como directorio
+de trabajo cuando se use la configuración nativa, porque allí se encuentran el
+archivo `.env`, las migraciones y los paquetes de conocimiento.
+
 ## Instalación nativa
 
 Requiere Python 3.12 o superior y `uv`.
@@ -102,6 +118,7 @@ los logs se envían a `stderr`.
 Requiere Docker.
 
 ```bash
+cd /ruta/al/SDLC-Manager
 docker build -t sdlc-manager:latest .
 docker volume create sdlc-manager-data
 ```
@@ -122,7 +139,8 @@ debe administrarlo como un proceso `stdio`. La ejecución manual anterior sirve
 
 El directorio de datos predeterminado es `./data`. Se puede cambiar mediante `SDLC_MANAGER_DATABASE_URL`.
 
-Para procesar un evento desde un Hook, script o pipeline:
+Para procesar un evento desde un Hook, script o pipeline en una instalación
+nativa, ejecute desde la raíz del repositorio:
 
 ```bash
 printf '%s\n' '{"event_id":"22222222-2222-4222-8222-222222222222","event_type":"session_started","source_client":"pipeline","timestamp":"2026-11-15T00:00:00Z","context":{}}' \
@@ -130,6 +148,16 @@ printf '%s\n' '{"event_id":"22222222-2222-4222-8222-222222222222","event_type":"
 ```
 
 El CLI escribe la respuesta JSON en `stdout` y los logs en `stderr`. Sus códigos de salida están documentados en [docs/universal-cli-validation.md](docs/universal-cli-validation.md).
+
+Para procesar el mismo evento usando Docker, puede ejecutar el comando desde
+cualquier directorio una vez construida la imagen y creado el volumen:
+
+```bash
+printf '%s\n' '{"event_id":"22222222-2222-4222-8222-222222222222","event_type":"session_started","source_client":"pipeline","timestamp":"2026-11-15T00:00:00Z","context":{}}' \
+  | docker run --rm -i --network none \
+      -v sdlc-manager-data:/app/data \
+      sdlc-manager:latest event process --stdin
+```
 
 Docker Compose está disponible para desarrollo local, pero no es necesario para conectar un cliente MCP:
 
