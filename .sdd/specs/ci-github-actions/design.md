@@ -38,7 +38,8 @@ flowchart LR
 - `GIT_DEPTH` completo solo se solicita en el job opcional de Sonar.
 - SonarCloud: la organización y la clave del proyecto se leen de variables del repositorio, nunca del código. Los pull requests desde forks no reciben secretos, por lo que el job se omite. La cobertura se genera con `pytest-cov` (`coverage.xml`, rutas relativas por `relative_files = true`) en el job `test` y se entrega al job `sonar` como artefacto; por eso `sonar` depende de `test`.
 - Dependabot (`.github/dependabot.yml`) cubre `pip`/`uv`, `docker` y `github-actions`.
-- Las actions oficiales usadas (`actions/checkout`, `actions/upload-artifact`, `astral-sh/setup-uv`) se fijan por versión mayor; fijarlas por SHA queda como mejora.
+- Las actions de GitHub (`actions/*`) se fijan por versión mayor. Las de terceros (`astral-sh/setup-uv`, `SonarSource/sonarqube-scan-action`) se fijan por SHA completo (regla Sonar `githubactions:S7637`); Dependabot las actualiza.
+- `uv` se invoca con `--frozen --no-build` (reglas Sonar `githubactions:S8544` y `S8541`): no se resuelven versiones fuera de `uv.lock` ni se construyen distribuciones fuente de dependencias; solo se construye el proyecto local.
 
 ## Riesgos
 
