@@ -21,6 +21,22 @@ codex mcp add sdlc-manager -- uv run --frozen sdlc-manager
 La configuración debe permanecer en el alcance elegido por el usuario. No se
 copian archivos ni se modifican configuraciones automáticamente.
 
+El instalador opcional por proyecto copia un paquete identificable y no
+modifica `AGENTS.md` existente:
+
+```bash
+uv run sdlc-manager integrations plan codex
+uv run sdlc-manager integrations install codex --project-id UUID_DEL_PROYECTO
+```
+
+El runtime puede requerir que el usuario revise y confíe explícitamente el
+plugin. Esto no se declara validado hasta ejecutar el cliente real. La retirada
+selectiva es:
+
+```bash
+uv run sdlc-manager integrations uninstall codex
+```
+
 ## Instrucciones
 
 Incorporar el contenido de `AGENTS.sdlc-manager.md` al `AGENTS.md` del proyecto

@@ -1,0 +1,11 @@
+{
+  "managedBy": "sdlc-manager-managed",
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "sdlc-manager": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--frozen", "sdlc-manager"]
+    }
+  }
+}

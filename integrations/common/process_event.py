@@ -5,13 +5,20 @@ import os
 import shlex
 import subprocess
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from .event_adapter import MAX_EVENT_BYTES
 
+MANAGER_ROOT = Path(__file__).resolve().parents[2]
 
-def run_normalized_event(default_source_client: str) -> int:
+
+def run_normalized_event(
+    default_source_client: str,
+    output_formatter: Callable[[dict[str, Any]], str] | None = None,
+) -> int:
     """Invoca el CLI sin shell y conserva su contrato de salida."""
     raw = sys.stdin.buffer.read(MAX_EVENT_BYTES + 1)
     if len(raw) > MAX_EVENT_BYTES:
@@ -25,8 +32,18 @@ def run_normalized_event(default_source_client: str) -> int:
     payload: dict[str, Any] = parsed
     payload["source_client"] = default_source_client
     try:
-        command = shlex.split(
-            os.environ.get("SDLC_MANAGER_COMMAND", "uv run --frozen sdlc-manager")
+        configured_command = os.environ.get("SDLC_MANAGER_COMMAND")
+        command = (
+            shlex.split(configured_command)
+            if configured_command
+            else [
+                "uv",
+                "--directory",
+                str(MANAGER_ROOT),
+                "run",
+                "--frozen",
+                "sdlc-manager",
+            ]
         )
     except ValueError:
         return write_adapter_error("ADAPTER_COMMAND_ERROR", "SDLC_MANAGER_COMMAND no es valido")
@@ -45,7 +62,17 @@ def run_normalized_event(default_source_client: str) -> int:
         return write_adapter_error("ADAPTER_EXECUTION_ERROR", "No fue posible iniciar el CLI")
     if result.stderr:
         sys.stderr.write(result.stderr)
-    sys.stdout.write(result.stdout)
+    if output_formatter is None:
+        sys.stdout.write(result.stdout)
+    else:
+        try:
+            parsed = json.loads(result.stdout)
+            if not isinstance(parsed, dict):
+                raise ValueError("CLI output is not an object")
+            formatted = output_formatter(parsed)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            formatted = result.stdout
+        sys.stdout.write(formatted)
     sys.stdout.flush()
     return result.returncode
 

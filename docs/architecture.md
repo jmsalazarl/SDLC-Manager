@@ -21,6 +21,8 @@ flowchart LR
     A --> AU[Audit Repository]
     R --> D[(SQLite)]
     D --> F[Alembic]
+    X[Provider Adapters] --> CLI
+    A --> SDD[Optional SDDNXP Reader]
 ```
 
 El servidor se ejecuta como proceso local. `stdout` contiene exclusivamente mensajes MCP y los logs se envían a `stderr`.
@@ -42,6 +44,9 @@ El servidor se ejecuta como proceso local. `stdout` contiene exclusivamente mens
 | Repositories | Conversión entre modelos de dominio y tablas SQLite, incluida la auditoría. |
 | MCP Interface | Esquemas de entrada, registro de herramientas y adaptación de respuestas. |
 | Universal CLI | Lectura JSON por stdin, códigos de salida y adaptación de respuestas sin iniciar MCP. |
+| Provider Adapters | Traducción de hooks o plugins a eventos normalizados sin reglas duplicadas. |
+| Integration Installer | Planificación, merge, backups y retiro selectivo por proyecto. |
+| SDDNXP Reader | Lectura local opcional de identidad y estado SDD, sin transiciones ni aprobaciones. |
 
 ## Flujo de evaluación
 
@@ -70,6 +75,12 @@ sequenceDiagram
 Las evidencias verificadas se consideran solo por tipo de evidencia y dentro del mismo proyecto e historia. Los estados `PENDING`, `REJECTED` y ausencia se informan por separado. Una respuesta generada por un modelo no cambia el estado de una evidencia.
 
 Los eventos normalizados ingresan por `SDLCEventProcessor`. El procesador calcula una huella del payload validado, recupera resultados duplicados desde `TEVENTOSDLC` y delega la evaluación a los servicios existentes.
+
+Los hooks y plugins no forman parte del núcleo y se instalan de manera
+opcional. La propagación contextual depende de la superficie del proveedor:
+Claude Code usa `hookSpecificOutput.additionalContext`, OpenCode agrega
+metadata al resultado de herramienta y Kiro recibe la salida del comando. Las
+superficies no ejecutadas contra un cliente real permanecen como no verificadas.
 
 Los checks compartidos entre workflow y política se identifican mediante `workflow_checks`. El workflow conserva la evaluación obligatoria y la política mantiene la trazabilidad de la regla sin ejecutar la misma condición dos veces.
 

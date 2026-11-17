@@ -10,9 +10,11 @@ from pydantic import ValidationError
 
 from ...domain.enums import EvaluationResult, EventProcessingStatus, SdlcEventType
 from ...domain.models import AuditEntry, ProcessedEvent
+from ...domain.ports.context_readers import SddnxpContextReader
 from ...domain.ports.repositories import AuditRepository, EventRepository
 from ...engines.experience_engine import ExperienceEngine
 from ..event_schemas import EventProcessingResult, SdlcEvent
+from .context_resolver import resolve_component
 from .sdlc_service import ApplicationError, SdlcService
 
 
@@ -24,11 +26,13 @@ class SdlcEventProcessor:
         service: SdlcService,
         events: EventRepository,
         audits: AuditRepository,
+        sddnxp_reader: SddnxpContextReader | None = None,
     ) -> None:
         self.service = service
         self.events = events
         self.audits = audits
         self.experience_engine = ExperienceEngine(service.experiences)
+        self.sddnxp_reader = sddnxp_reader
 
     def process_payload(self, payload: object) -> EventProcessingResult:
         try:
@@ -54,6 +58,8 @@ class SdlcEventProcessor:
 
         try:
             result = self._dispatch(event)
+            if self.sddnxp_reader is not None:
+                result = result.model_copy(update={"sddnxp_context": self.sddnxp_reader.read()})
         except ApplicationError as error:
             result = self._result(
                 event.event_id,
@@ -183,6 +189,9 @@ class SdlcEventProcessor:
         if event.project_id is None:
             return [], [], []
         context = self._service_context(event)
+        component = resolve_component(context, event.affected_files)
+        if component and "component" not in context:
+            context["component"] = component
         rules = self.service.get_applicable_rules(
             project_id=event.project_id,
             user_story_id=event.user_story_id,
@@ -194,13 +203,12 @@ class SdlcEventProcessor:
         )
         practices = self.service.get_applicable_practices(context)
         query = self._context_text(event.context, "experience_query")
-        component = self._context_text(event.context, "component")
         tags = self._context_tags(event.context, "experience_tags")
         experiences = []
         if query or component or tags:
             experiences = self.experience_engine.search(
                 query, component, tags, project_id=event.project_id
-            )
+            )[:5]
         return rules, [str(item.id) for item in practices], [str(item.id) for item in experiences]
 
     @staticmethod
@@ -218,6 +226,7 @@ class SdlcEventProcessor:
     @staticmethod
     def _service_context(event: SdlcEvent) -> dict[str, Any]:
         context = dict(event.context)
+        component = resolve_component(context, event.affected_files)
         context.update(
             {
                 "event": SdlcEventProcessor._policy_event(event),
@@ -227,6 +236,8 @@ class SdlcEventProcessor:
                 "user_story_id": str(event.user_story_id) if event.user_story_id else None,
             }
         )
+        if component:
+            context["component"] = component
         return context
 
     @staticmethod

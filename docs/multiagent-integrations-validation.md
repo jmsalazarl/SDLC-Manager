@@ -1,5 +1,9 @@
 # Validación De Integraciones Multiagente
 
+> Esta validación describe la base de adaptadores inicial. La activación
+> contextual y el instalador no destructivo se ampliaron en
+> [engineering-companion-validation.md](engineering-companion-validation.md).
+
 ## 1. Arquitectura
 
 SDLC Manager mantiene un único núcleo cliente-independiente:

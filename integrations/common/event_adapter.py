@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -84,4 +85,13 @@ def _timestamp(value: Any) -> str:
 
 
 def project_id_from_environment() -> str | None:
-    return os.environ.get("SDLC_MANAGER_PROJECT_ID")
+    configured = os.environ.get("SDLC_MANAGER_PROJECT_ID")
+    if configured:
+        return configured
+    config_path = Path.cwd() / ".sdlc-manager" / "config.json"
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    project_id = config.get("project_id") if isinstance(config, dict) else None
+    return project_id if isinstance(project_id, str) and project_id else None

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sdlc-manager",
+  "version": "0.1.0",
+  "description": "Contextual engineering guidance from SDLC Manager. sdlc-manager-managed",
+  "mcpServers": "./mcp.json",
+  "skills": "./skills/",
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/hooks.json"
+    }
+  }
+}

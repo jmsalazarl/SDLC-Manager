@@ -1,0 +1,17 @@
+{
+    "version": "v1",
+    "hooks": [
+        {
+            "name": "sdlc-manager-file-save",
+            "description": "Consulta SDLC Manager y agrega el resultado al contexto; no bloquea. sdlc-manager-managed",
+            "trigger": "PostFileSave",
+            "matcher": "\\.(py|yaml|yml|sql)$",
+            "action": {
+                "type": "command",
+                "command": 'uv --directory "__SDLC_MANAGER_ROOT__" run python "__SDLC_MANAGER_ROOT__/integrations/kiro/kiro_event_adapter.py"',
+            },
+            "timeout": 60,
+            "enabled": true,
+        }
+    ],
+}

@@ -23,6 +23,7 @@ from .repositories.sqlalchemy_repositories import (
     SqlAlchemyUserStoryRepository,
     SqlAlchemyWorkflowRepository,
 )
+from .sddnxp.reader import SddnxpReader
 from .workflow.loader import WorkflowInitializer, load_workflow
 
 
@@ -72,5 +73,10 @@ def build_container(settings: Settings, initialize_schema: bool = True) -> Appli
         policy_engine=policy_engine,
         workflow_service=WorkflowService(workflow_repository, projects),
         workflow_engine=workflow_engine,
-        event_processor=SdlcEventProcessor(service, event_repository, audit_repository),
+        event_processor=SdlcEventProcessor(
+            service,
+            event_repository,
+            audit_repository,
+            SddnxpReader(settings.project_root),
+        ),
     )

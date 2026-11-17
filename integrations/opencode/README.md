@@ -7,8 +7,8 @@
   guía común.
 - Wrapper manual de eventos: **PROBADO CON MOCK**.
 - Cliente OpenCode real: **NO VALIDADO EN CLIENTE REAL**.
-- Plugins, activación automática y enforcement: **NO VERIFICADO**; no se
-  activan.
+- Plugin local y activación `execute.after`: **IMPLEMENTADO**; cliente real
+  **NO VALIDADO EN CLIENTE REAL**.
 
 ## Instalación MCP
 
@@ -23,12 +23,24 @@ opencode mcp add
 opencode mcp list
 ```
 
+La instalación por proyecto usa `opencode.json` y un plugin local:
+
+```bash
+uv run sdlc-manager integrations plan opencode
+uv run sdlc-manager integrations install opencode --project-id UUID_DEL_PROYECTO
+```
+
+Si solo existe `opencode.jsonc`, el instalador no lo reescribe y solicita un
+merge manual. El plugin usa la API `@opencode/plugin` y `execute.after`; su
+ejecución contra un cliente instalado debe verificarse por separado.
+
 ## Instrucciones y eventos
 
 OpenCode puede cargar archivos mediante `instructions`. La guía común indica
-cuándo consultar workflows, políticas, prácticas y memoria. El wrapper
-`process_event.py` recibe un `SdlcEvent` serializado; no inventa eventos nativos
-ni ejecuta plugins.
+cuándo consultar workflows, políticas, prácticas y memoria. El plugin local
+observa `execute.after`, traduce entradas de archivos y agrega la respuesta al
+metadata del resultado. La ejecución del plugin contra un cliente instalado
+continúa sin validación real en este entorno.
 
 ## Referencias oficiales
 

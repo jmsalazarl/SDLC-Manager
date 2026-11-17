@@ -21,6 +21,20 @@ Los ejemplos existentes son:
 Copiar el contenido a la configuración del proyecto solo después de revisar si
 el archivo de destino ya existe. No sobrescribir configuraciones del usuario.
 
+Para instalar solo la superficie de este proyecto:
+
+```bash
+uv run sdlc-manager integrations plan kiro
+uv run sdlc-manager integrations install kiro --project-id UUID_DEL_PROYECTO
+```
+
+El instalador conserva `mcpServers` existentes y el hook instalado es
+informativo. Para retirarlo:
+
+```bash
+uv run sdlc-manager integrations uninstall kiro
+```
+
 ## Hook opcional
 
 1. Definir `SDLC_MANAGER_PROJECT_ID` con un UUID del proyecto local.

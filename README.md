@@ -20,6 +20,10 @@ Las políticas se declaran en YAML y se validan con Pydantic. El motor de polít
 - Aislamiento de datos por proyecto.
 - Procesamiento idempotente de eventos SDLC normalizados.
 - CLI universal para procesar eventos desde stdin sin iniciar MCP.
+- Engineering Companion con recuperación contextual de experiencias y lector
+  opcional de estado SDDNXP en modo lectura.
+- Instalador no destructivo de integraciones por proyecto para Kiro, Codex,
+  OpenCode y Claude Code.
 - Paquetes de conocimiento genéricos y de demostración.
 - Imagen Docker multi-stage con volumen persistente en `/app/data`.
 
@@ -229,6 +233,31 @@ Conectar el servidor permite descubrir herramientas, pero no activa
 invocaciones automáticas. Los Hooks, plugins o scripts explícitos deben decidir
 cuándo llamar cada herramienta.
 
+### Activación contextual e integraciones
+
+Desde la raíz del repositorio de SDLC Manager se puede revisar e instalar una
+integración para otro proyecto sin modificar perfiles globales:
+
+```bash
+uv run sdlc-manager integrations list
+uv run sdlc-manager integrations plan kiro claude-code --project-root /ruta/al/proyecto
+uv run sdlc-manager integrations install kiro --project-root /ruta/al/proyecto --project-id UUID_DEL_PROYECTO
+uv run sdlc-manager integrations status --project-root /ruta/al/proyecto
+```
+
+El instalador crea únicamente recursos propios de SDLC Manager, conserva las
+entradas ajenas, genera backups cuando modifica archivos y permite retirar
+selectivamente una integración:
+
+```bash
+uv run sdlc-manager integrations uninstall kiro --project-root /ruta/al/proyecto
+```
+
+La activación depende del mecanismo real del proveedor. El servidor MCP no se
+mantiene levantado como daemon: el cliente lo inicia como proceso `stdio`.
+Consulta [la validación del Engineering Companion](docs/engineering-companion-validation.md)
+antes de habilitar hooks o plugins.
+
 ## Ejemplo de uso
 
 1. Invocar `create_project` y `create_user_story` para preparar datos locales.
@@ -257,6 +286,7 @@ La suite cubre el motor de políticas, persistencia SQLite, aislamiento por proy
 - [Herramientas MCP](docs/mcp-tools.md)
 - [Validación del Event Processor](docs/event-processor-validation.md)
 - [Validación del CLI universal](docs/universal-cli-validation.md)
+- [Validación del Engineering Companion](docs/engineering-companion-validation.md)
 - [Validación de Workflow Enforcement](docs/workflow-enforcement-validation.md)
 - [Docker](docs/docker.md)
 - [Roadmap](docs/roadmap.md)
@@ -269,7 +299,8 @@ La suite cubre el motor de políticas, persistencia SQLite, aislamiento por proy
 - No integra Azure DevOps, producción, servicios cloud ni autenticación empresarial.
 - La aprobación de evidencias es local y requiere una llamada explícita.
 - Las prácticas requieren revisión explícita y no producen bloqueos por sí mismas.
-- El CLI no implementa Hooks ni adaptadores específicos de clientes.
+- Los clientes reales no fueron ejecutados en este entorno; las integraciones
+  se validaron con contratos, procesos falsos y filesystem temporal.
 - Los paquetes de conocimiento de demostración contienen únicamente datos ficticios.
 
 ## Seguridad

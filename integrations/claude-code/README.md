@@ -17,6 +17,17 @@ sobrescribir entradas existentes. La instalación interactiva equivalente es:
 claude mcp add sdlc-manager -- uv run --frozen sdlc-manager
 ```
 
+La instalación aditiva del proyecto puede realizarse con:
+
+```bash
+uv run sdlc-manager integrations plan claude-code
+uv run sdlc-manager integrations install claude-code --project-id UUID_DEL_PROYECTO
+```
+
+El hook `PostToolUse` entrega el resultado como `hookSpecificOutput` con
+`additionalContext`. No bloquea operaciones; para retirarlo se usa
+`uv run sdlc-manager integrations uninstall claude-code`.
+
 ## Instrucciones y hooks
 
 Copiar selectivamente `CLAUDE.md.example` a las instrucciones del proyecto.

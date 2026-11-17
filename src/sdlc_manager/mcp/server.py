@@ -31,6 +31,7 @@ from ..application.schemas import (
 from ..config import Settings, get_settings
 from ..domain.enums import KnowledgeScope, ReviewStatus
 from ..infrastructure.container import ApplicationContainer, build_container
+from .stdio_transport import run_stdio
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
     service = container.service
 
     @server.tool()
-    def health_check() -> dict[str, Any]:
+    async def health_check() -> dict[str, Any]:
         """Verifica el estado local del servidor y sus dependencias."""
         return {
             "status": "ok",
@@ -57,12 +58,12 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         }
 
     @server.tool()
-    def list_policies(input: ListPoliciesInput) -> dict[str, Any]:
+    async def list_policies(input: ListPoliciesInput) -> dict[str, Any]:
         """Lista politicas YAML filtradas por estado y severidad."""
         return {"policies": service.list_policies(input.status, input.severity)}
 
     @server.tool()
-    def get_applicable_rules(input: ApplicableRulesInput) -> dict[str, Any]:
+    async def get_applicable_rules(input: ApplicableRulesInput) -> dict[str, Any]:
         """Obtiene reglas aplicables a un evento del SDLC."""
         return {
             "rules": service.get_applicable_rules(
@@ -77,26 +78,26 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         }
 
     @server.tool()
-    def evaluate_gate(input: EvaluateGateInput) -> dict[str, Any]:
+    async def evaluate_gate(input: EvaluateGateInput) -> dict[str, Any]:
         """Evalua un gate y persiste la decision determinista."""
         return service.evaluate_gate(
             input.project_id, input.user_story_id, input.gate, input.context
         )
 
     @server.tool()
-    def register_experience(input: RegisterExperienceInput) -> dict[str, Any]:
+    async def register_experience(input: RegisterExperienceInput) -> dict[str, Any]:
         """Registra una experiencia en estado pendiente de revision."""
         experience = service.register_experience(**input.model_dump())
         return {"id": str(experience.id), "review_status": experience.review_status.value}
 
     @server.tool()
-    def search_experiences(input: SearchExperiencesInput) -> dict[str, Any]:
+    async def search_experiences(input: SearchExperiencesInput) -> dict[str, Any]:
         """Busca experiencias aprobadas por texto, componente o etiquetas."""
         experiences = service.search_experiences(**input.model_dump())
         return {"experiences": [_experience_to_dict(item) for item in experiences]}
 
     @server.tool()
-    def review_experience(input: ReviewExperienceInput) -> dict[str, Any]:
+    async def review_experience(input: ReviewExperienceInput) -> dict[str, Any]:
         """Aprueba o rechaza una memoria tecnica de forma explicita."""
         experience = service.review_experience(
             input.experience_id,
@@ -106,52 +107,52 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         return _experience_to_dict(experience)
 
     @server.tool()
-    def register_evidence(input: RegisterEvidenceInput) -> dict[str, Any]:
+    async def register_evidence(input: RegisterEvidenceInput) -> dict[str, Any]:
         """Registra evidencia como PENDING sin verificarla automaticamente."""
         evidence = service.register_evidence(**input.model_dump())
         return _evidence_to_dict(evidence)
 
     @server.tool()
-    def verify_evidence(input: VerifyEvidenceInput) -> dict[str, Any]:
+    async def verify_evidence(input: VerifyEvidenceInput) -> dict[str, Any]:
         """Registra una aprobacion humana o rechazo explicito de evidencia."""
         evidence = service.verify_evidence(**input.model_dump())
         return _evidence_to_dict(evidence)
 
     @server.tool()
-    def analyze_user_story(input: AnalyzeStoryInput) -> dict[str, Any]:
+    async def analyze_user_story(input: AnalyzeStoryInput) -> dict[str, Any]:
         """Analiza completitud verificable de una historia de usuario."""
         return service.analyze_user_story(input.project_id, input.user_story_id)
 
     @server.tool()
-    def start_sprint(input: StartSprintInput) -> dict[str, Any]:
+    async def start_sprint(input: StartSprintInput) -> dict[str, Any]:
         """Analiza las historias de un proyecto o sprint."""
         return service.start_sprint(input.project_id, input.sprint_id)
 
     @server.tool()
-    def create_project(input: CreateProjectInput) -> dict[str, Any]:
+    async def create_project(input: CreateProjectInput) -> dict[str, Any]:
         """Crea un proyecto local para preparar datos de analisis."""
         project = service.create_project(input.name, input.description)
         return {"id": str(project.id), "name": project.name}
 
     @server.tool()
-    def create_sprint(input: CreateSprintInput) -> dict[str, Any]:
+    async def create_sprint(input: CreateSprintInput) -> dict[str, Any]:
         """Crea un sprint dentro de un proyecto existente."""
         sprint = service.create_sprint(**input.model_dump())
         return {"id": str(sprint.id), "project_id": str(sprint.project_id), "status": sprint.status}
 
     @server.tool()
-    def create_user_story(input: CreateStoryInput) -> dict[str, Any]:
+    async def create_user_story(input: CreateStoryInput) -> dict[str, Any]:
         """Crea una historia de usuario local para el analisis del SDLC."""
         story = service.create_story(**input.model_dump())
         return {"id": str(story.id), "project_id": str(story.project_id), "status": story.status}
 
     @server.tool()
-    def get_sdlc_workflow(input: GetWorkflowInput) -> dict[str, Any]:
+    async def get_sdlc_workflow(input: GetWorkflowInput) -> dict[str, Any]:
         """Devuelve el workflow asignado al proyecto."""
         return container.workflow_service.get_for_project(input.project_id)
 
     @server.tool()
-    def customize_sdlc_workflow(input: CustomizeWorkflowInput) -> dict[str, Any]:
+    async def customize_sdlc_workflow(input: CustomizeWorkflowInput) -> dict[str, Any]:
         """Crea una version derivada del workflow del proyecto."""
         return container.workflow_service.customize(
             input.project_id,
@@ -162,7 +163,7 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         )
 
     @server.tool()
-    def register_practice(input: RegisterPracticeInput) -> dict[str, Any]:
+    async def register_practice(input: RegisterPracticeInput) -> dict[str, Any]:
         """Registra una practica pendiente sin crear un bloqueo."""
         practice = service.register_practice(
             title=input.title,
@@ -179,7 +180,7 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         return _practice_to_dict(practice)
 
     @server.tool()
-    def list_practices(input: ListPracticesInput) -> dict[str, Any]:
+    async def list_practices(input: ListPracticesInput) -> dict[str, Any]:
         """Lista practicas aprobadas o, si se solicita, pendientes."""
         return {
             "practices": [
@@ -188,7 +189,7 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         }
 
     @server.tool()
-    def review_practice(input: ReviewPracticeInput) -> dict[str, Any]:
+    async def review_practice(input: ReviewPracticeInput) -> dict[str, Any]:
         """Aprueba o rechaza una practica sin convertirla en politica."""
         practice = service.review_practice(
             input.practice_id,
@@ -198,7 +199,7 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         return _practice_to_dict(practice)
 
     @server.tool()
-    def get_applicable_practices(input: ApplicablePracticesInput) -> dict[str, Any]:
+    async def get_applicable_practices(input: ApplicablePracticesInput) -> dict[str, Any]:
         """Obtiene recomendaciones aprobadas para un contexto SDLC."""
         context = dict(input.context)
         context.update(
@@ -219,7 +220,7 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
         }
 
     @server.tool()
-    def process_sdlc_event(input: SdlcEvent) -> dict[str, Any]:
+    async def process_sdlc_event(input: SdlcEvent) -> dict[str, Any]:
         """Procesa un evento normalizado con idempotencia local."""
         return container.event_processor.process(input).model_dump(mode="json")
 
@@ -295,4 +296,4 @@ def get_server_for_tests(settings: Settings) -> tuple[MCPServer, ApplicationCont
 
 def main(server: MCPServer | None = None) -> None:
     logging.basicConfig(stream=sys.stderr, level=get_settings().log_level)
-    (server or create_server(initialize_schema=False)).run()
+    run_stdio(server or create_server(initialize_schema=False))
