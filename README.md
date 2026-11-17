@@ -289,6 +289,7 @@ La suite cubre el motor de políticas, persistencia SQLite, aislamiento por proy
 - [Validación del Engineering Companion](docs/engineering-companion-validation.md)
 - [Validación de Workflow Enforcement](docs/workflow-enforcement-validation.md)
 - [Docker](docs/docker.md)
+- [CI con GitHub Actions](docs/ci.md)
 - [Roadmap](docs/roadmap.md)
 - [Spec de arquitectura de conocimiento](.sdd/specs/knowledge-architecture/requirements.md)
 - [AGENTS.md](AGENTS.md)
