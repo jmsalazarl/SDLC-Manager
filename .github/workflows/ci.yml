@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  UV_VERSION: "0.6.5"
+  UV_VERSION: "0.13.7"
+  UV_PYTHON: "3.12"
   TRIVY_IMAGE: "aquasec/trivy:0.58.1"
   IMAGE_TAG: "sdlc-manager:ci"
 
