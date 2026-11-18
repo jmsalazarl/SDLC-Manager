@@ -245,4 +245,21 @@ specifications:
       - .sdd/audit/2026-11-15-engineering-companion.md
     decisions:
       - .sdd/adrs/0011-engineering-companion-multiagente.md
+  SPEC-009:
+    document: .sdd/specs/ci-github-actions
+    requirements:
+      - .sdd/specs/ci-github-actions/requirements.md
+    design:
+      - .sdd/specs/ci-github-actions/design.md
+    tasks:
+      - .sdd/specs/ci-github-actions/tasks.md
+    implementation:
+      - .github/workflows/ci.yml
+      - .github/dependabot.yml
+    tests:
+      - tests/integration/test_cli.py
+      - tests/integration/test_mcp_protocol.py
+    validation:
+      - .sdd/audit/2026-11-18-ci-github-actions.md
+      - docs/ci.md
 

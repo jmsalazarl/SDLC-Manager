@@ -29,7 +29,7 @@ Se agrega un workflow y la configuración de Dependabot. No se modifica código 
   - _Capa: Docs_
   - _Depende de: 2_
 
-- [ ] 5. Validar
+- [x] 5. Validar
   - Validar sintaxis YAML; ejecutar `ruff` y `mypy` locales; registrar evidencia en `.sdd/audit/`.
   - _Requerimiento: Requirement 1_
   - _Capa: Validación_

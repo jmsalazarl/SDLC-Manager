@@ -4,7 +4,7 @@ Servidor MCP local para gobernanza del ciclo de vida de desarrollo de software, 
 
 ## Descripción
 
-SDLC Manager permite consultar experiencias técnicas, detectar riesgos, registrar evidencias y evaluar gates con decisiones `PASS`, `WARN` o `BLOCK`. El MVP funciona sin servicios externos, credenciales corporativas ni conectividad de red durante su ejecución.
+SDLC Manager permite consultar experiencias técnicas, detectar riesgos, registrar evidencias y evaluar gates con decisiones `PASS`, `WARN` o `BLOCK`. El MVP funciona sin servicios externos, credenciales externas ni conectividad de red durante su ejecución.
 
 Las políticas se declaran en YAML y se validan con Pydantic. El motor de políticas no usa `eval`, `exec`, LLM ni acceso a sistemas de producción.
 
@@ -297,7 +297,7 @@ La suite cubre el motor de políticas, persistencia SQLite, aislamiento por proy
 ## Limitaciones del MVP
 
 - No incluye embeddings ni búsqueda semántica.
-- No integra Azure DevOps, producción, servicios cloud ni autenticación empresarial.
+- No integra gestores de trabajo externos, producción, servicios cloud ni autenticación externa.
 - La aprobación de evidencias es local y requiere una llamada explícita.
 - Las prácticas requieren revisión explícita y no producen bloqueos por sí mismas.
 - Los clientes reales no fueron ejecutados en este entorno; las integraciones
