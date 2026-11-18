@@ -1,10 +1,10 @@
 specId: SPEC-009
 name: ci-github-actions
 version: 1.0.0
-status: draft
+status: implemented
 owner: project-owner
 createdAt: "2026-11-17"
-updatedAt: "2026-11-17"
+updatedAt: "2026-11-18"
 documents:
   - requirements.md
   - design.md
