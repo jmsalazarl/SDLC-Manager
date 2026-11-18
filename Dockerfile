@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /bin/
 
@@ -12,7 +12,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-build
 
-FROM python:3.12-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 ARG APP_UID=10001
 RUN useradd --create-home --uid "${APP_UID}" appuser
