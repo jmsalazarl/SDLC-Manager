@@ -39,6 +39,7 @@ flowchart LR
 - SonarCloud: la organización y la clave del proyecto se leen de variables del repositorio, nunca del código. Los pull requests desde forks no reciben secretos, por lo que el job se omite. La cobertura se genera con `pytest-cov` (`coverage.xml`, rutas relativas por `relative_files = true`) en el job `test` y se entrega al job `sonar` como artefacto; por eso `sonar` depende de `test`.
 - Dependabot (`.github/dependabot.yml`) cubre `pip`/`uv`, `docker` y `github-actions`.
 - Las actions de GitHub (`actions/*`) se fijan por versión mayor. Las de terceros (`astral-sh/setup-uv`, `SonarSource/sonarqube-scan-action`) se fijan por SHA completo (regla Sonar `githubactions:S7637`); Dependabot las actualiza.
+- `SonarSource/sonarqube-scan-action` usa la versión `v6.0.0`, que reemplaza la implementación Bash por JavaScript y cambia el análisis de `args`: cada argumento que contenga espacios debe pasar como una cadena entrecomillada. Los argumentos actuales (`organization`, `projectKey`, versión de Python, cobertura y Quality Gate) no contienen espacios y no requieren `projectBaseDir`.
 - `uv` se invoca con `--frozen --no-build` (reglas Sonar `githubactions:S8544` y `S8541`): no se resuelven versiones fuera de `uv.lock` ni se construyen distribuciones fuente de dependencias; solo se construye el proyecto local.
 
 ## Riesgos
