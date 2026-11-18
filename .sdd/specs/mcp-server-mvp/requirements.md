@@ -35,7 +35,7 @@ El producto complementa a los clientes MCP y a Kiro; no reemplaza al asistente, 
 
 - Frontend, microservicios y despliegues productivos.
 - PostgreSQL, vector database y embeddings.
-- Azure DevOps, sistemas corporativos y acceso a producción.
+- Gestores de trabajo externos, sistemas externos y acceso a producción.
 - Autenticación empresarial, notificaciones remotas y telemetría.
 - Hooks corporativos automáticos.
 - Interpretación semántica avanzada basada en LLM.
