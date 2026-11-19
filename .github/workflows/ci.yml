@@ -44,7 +44,7 @@ jobs:
           version: ${{ env.UV_VERSION }}
       - run: uv sync --frozen --no-build
       - run: uv run --frozen --no-build pytest --cov --cov-report=xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: coverage.xml
@@ -125,7 +125,7 @@ jobs:
             --scanners vuln,secret,misconfig \
             --severity CRITICAL \
             --exit-code 1 .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: trivy-fs
@@ -141,7 +141,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build --pull --tag "$IMAGE_TAG" .
       - run: docker save "$IMAGE_TAG" --output image.tar
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: image
           path: image.tar
@@ -176,7 +176,7 @@ jobs:
             --scanners vuln,secret,misconfig \
             --severity CRITICAL \
             --exit-code 1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: trivy-image
@@ -196,7 +196,7 @@ jobs:
             --scanners vuln \
             --format cyclonedx --output sbom.cdx.json \
             --exit-code 0 .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.cdx.json
