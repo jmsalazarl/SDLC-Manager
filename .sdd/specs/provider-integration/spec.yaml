@@ -1,0 +1,16 @@
+specId: SPEC-010
+name: provider-integration
+version: 1.0.0
+status: tasks-complete
+owner: project-owner
+createdAt: "2026-11-18"
+updatedAt: "2026-11-18"
+documents:
+  - requirements.md
+  - design.md
+  - tasks.md
+dependencies:
+  - SPEC-004
+  - SPEC-005
+  - SPEC-006
+  - SPEC-008

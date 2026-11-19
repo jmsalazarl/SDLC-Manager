@@ -5,25 +5,25 @@ description = "Servidor MCP local para gobernanza y conocimiento del SDLC"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "alembic==1.14.1",
+    "alembic==1.20.1",
     "mcp==2.3.0",
-    "pydantic==2.12.4",
-    "pydantic-settings==2.11.0",
-    "pyyaml==6.0.2",
-    "sqlalchemy==2.0.48",
+    "pydantic==2.14.3",
+    "pydantic-settings==2.16.3",
+    "pyyaml==6.0.3",
+    "sqlalchemy==2.1.8",
 ]
 
 [build-system]
-requires = ["hatchling==1.27.0"]
+requires = ["hatchling==1.33.0"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "mypy==1.15.0",
+    "mypy==2.4.1",
     "pytest==8.3.4",
     "pytest-asyncio==0.25.3",
-    "pytest-cov==6.0.0",
-    "ruff==0.9.7",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.5",
     "types-PyYAML==6.0.12.20250915",
 ]
 

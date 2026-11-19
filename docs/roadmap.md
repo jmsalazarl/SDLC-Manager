@@ -14,10 +14,10 @@
 - Adaptadores para eventos de inicio de sesión, inicio de tareas, guardado, ejecución previa y finalización.
 - Trazabilidad de correlación entre evento y evaluación.
 
-## V3 — Paquetes corporativos
+## V3 — Paquetes por organización y equipo
 
 - Knowledge Packs por organización, equipo y aplicación.
-- Integración controlada con Azure DevOps.
+- Integración controlada con gestores de trabajo.
 - Versionado, prioridades y excepciones autorizadas.
 
 ## V4 — Distribución genérica

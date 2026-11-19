@@ -33,12 +33,13 @@ flowchart LR
 
 ## Decisiones
 
-- Trivy se ejecuta con la imagen `aquasec/trivy` en la misma versión que la librería de templates para obtener resultados equivalentes.
+- Trivy se ejecuta con la imagen `aquasec/trivy:0.76.2`. La versión `0.58.1` de la librería de templates no puede interpretar el paquete de checks Rego que descarga hoy (errores `rego_type_error` y checks omitidos), por lo que se usa una versión reciente; la librería de templates debería actualizarse igual.
 - Concurrencia: se cancela la ejecución previa de la misma rama (`cancel-in-progress`).
 - `GIT_DEPTH` completo solo se solicita en el job opcional de Sonar.
 - SonarCloud: la organización y la clave del proyecto se leen de variables del repositorio, nunca del código. Los pull requests desde forks no reciben secretos, por lo que el job se omite. La cobertura se genera con `pytest-cov` (`coverage.xml`, rutas relativas por `relative_files = true`) en el job `test` y se entrega al job `sonar` como artefacto; por eso `sonar` depende de `test`.
-- Dependabot (`.github/dependabot.yml`) cubre `pip`/`uv`, `docker` y `github-actions`.
+- Dependabot (`.github/dependabot.yml`) cubre `uv`, `docker` y `github-actions`. El ecosistema `uv` permite mantener coordinados `pyproject.toml` y `uv.lock`.
 - Las actions de GitHub (`actions/*`) se fijan por versión mayor. Las de terceros (`astral-sh/setup-uv`, `SonarSource/sonarqube-scan-action`) se fijan por SHA completo (regla Sonar `githubactions:S7637`); Dependabot las actualiza.
+- `SonarSource/sonarqube-scan-action` usa la versión `v6.0.0`, que reemplaza la implementación Bash por JavaScript y cambia el análisis de `args`: cada argumento que contenga espacios debe pasar como una cadena entrecomillada. Los argumentos actuales (`organization`, `projectKey`, versión de Python, cobertura y Quality Gate) no contienen espacios y no requieren `projectBaseDir`.
 - `uv` se invoca con `--frozen --no-build` (reglas Sonar `githubactions:S8544` y `S8541`): no se resuelven versiones fuera de `uv.lock` ni se construyen distribuciones fuente de dependencias; solo se construye el proyecto local.
 
 ## Riesgos
