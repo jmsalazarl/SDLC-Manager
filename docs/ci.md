@@ -24,7 +24,7 @@ uv run mypy src
 uv run pytest --cov --cov-report=xml
 ```
 
-Dependabot revisa semanalmente `pip`, `docker` y `github-actions`.
+Dependabot revisa semanalmente `uv`, `docker` y `github-actions`.
 
 ## Configurar SonarCloud
 
