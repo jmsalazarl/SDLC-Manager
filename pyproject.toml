@@ -58,7 +58,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src", "integrations"]
 branch = true
 relative_files = true
 

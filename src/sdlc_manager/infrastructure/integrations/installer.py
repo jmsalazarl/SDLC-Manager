@@ -665,40 +665,25 @@ class IntegrationInstaller:
         self._write_json(path, data, report)
 
     def _remove_json_hooks(self, path: Path, report: dict[str, Any]) -> None:
-        if not path.is_file():
-            return
-        data = self._read_json(path)
-        hooks = data.get("hooks")
-        if not isinstance(hooks, dict):
-            return
-        changed = False
-        for name, entries in list(hooks.items()):
-            if not isinstance(entries, list):
-                continue
-            filtered = [
-                item
-                for item in entries
-                if "integrations/claude-code/hook_event.py" not in json.dumps(item)
-            ]
-            changed = changed or len(filtered) != len(entries)
-            if filtered:
-                hooks[name] = filtered
-            elif name in hooks:
-                del hooks[name]
-        if changed:
-            self._write_json(path, data, report)
+        self._remove_hooks_by_marker(
+            path, report, "integrations/claude-code/hook_event.py", drop_empty_hooks=False
+        )
 
     def _remove_codex_hooks(self, path: Path, report: dict[str, Any]) -> None:
-        if not path.is_file():
-            return
-        data = self._read_json(path)
-        hooks = data.get("hooks")
-        if not isinstance(hooks, dict):
-            return
         script = (
             self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin" / "hooks" / "event.py"
         )
-        marker = str(script)
+        self._remove_hooks_by_marker(path, report, str(script), drop_empty_hooks=True)
+
+    def _remove_hooks_by_marker(
+        self, path: Path, report: dict[str, Any], marker: str, *, drop_empty_hooks: bool
+    ) -> None:
+        if not path.is_file():
+            return
+        data = self._read_json(path)
+        hooks = data.get("hooks")
+        if not isinstance(hooks, dict):
+            return
         changed = False
         for name, entries in list(hooks.items()):
             if not isinstance(entries, list):
@@ -709,10 +694,11 @@ class IntegrationInstaller:
                 hooks[name] = filtered
             else:
                 del hooks[name]
-        if changed:
-            if not hooks:
-                data.pop("hooks", None)
-            self._write_json(path, data, report)
+        if not changed:
+            return
+        if drop_empty_hooks and not hooks:
+            data.pop("hooks", None)
+        self._write_json(path, data, report)
 
     def _remove_opencode_config(self, path: Path, report: dict[str, Any]) -> None:
         if not path.is_file():

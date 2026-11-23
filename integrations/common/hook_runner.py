@@ -181,3 +181,29 @@ class _Buffer:
 
     def read(self, size: int = -1) -> bytes:
         return self.payload[:size] if size >= 0 else self.payload
+
+
+def build_context_message(result: Mapping[str, Any]) -> str | None:
+    """Construye el contexto de texto para los hooks nativos o devuelve None si no hay mensajes."""
+    recommendations = result.get("recommendations")
+    messages = (
+        [item for item in recommendations if isinstance(item, str)]
+        if isinstance(recommendations, list)
+        else []
+    )
+    decision = result.get("decision")
+    explanation = result.get("explanation")
+    if not messages and decision in {"WARN", "BLOCK"} and isinstance(explanation, str):
+        messages.append(explanation)
+    if (
+        not messages
+        and result.get("status") in {"rejected", "unsupported", "error"}
+        and isinstance(explanation, str)
+    ):
+        messages.append(explanation)
+    if not messages:
+        return None
+    context = "SDLC Manager:\n- " + "\n- ".join(messages)
+    if decision in {"WARN", "BLOCK"}:
+        context = f"{context}\nDecision: {decision}."
+    return context[:10000]

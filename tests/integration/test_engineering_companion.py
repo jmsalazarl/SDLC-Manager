@@ -12,7 +12,10 @@ from integrations.common.event_adapter import project_id_from_environment
 from integrations.common.hook_runner import normalize_native_event
 
 from sdlc_manager.domain.enums import ReviewStatus
-from sdlc_manager.infrastructure.integrations.installer import IntegrationInstaller
+from sdlc_manager.infrastructure.integrations.installer import (
+    IntegrationError,
+    IntegrationInstaller,
+)
 from sdlc_manager.infrastructure.sddnxp.reader import SddnxpReader
 
 ROOT = Path(__file__).parents[2]
@@ -309,3 +312,48 @@ def test_installer_cli_plan_writes_only_json_stdout(tmp_path: Path) -> None:
     assert process.returncode == 0
     assert json.loads(process.stdout)["status"] == "planned"
     assert process.stderr == b""
+
+
+def test_codex_installer_is_idempotent_and_rejects_invalid_hooks(tmp_path: Path) -> None:
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    installer = IntegrationInstaller(tmp_path)
+    installer.install(["codex"], project_id=PROJECT_ID)
+    installer.install(["codex"], project_id=PROJECT_ID)
+    installed = json.loads(hooks_path.read_text(encoding="utf-8"))
+    assert len(installed["hooks"]["SessionStart"]) == 1
+
+    with pytest.raises(IntegrationError, match="hooks de Codex"):
+        installer._merge_codex_hooks({"hooks": []})
+    with pytest.raises(IntegrationError, match="hooks.SessionStart"):
+        installer._merge_codex_hooks({"hooks": {"SessionStart": {}}})
+
+
+def test_remove_hooks_ignores_missing_or_unrelated_files(tmp_path: Path) -> None:
+    installer = IntegrationInstaller(tmp_path)
+    report: dict = {}
+    missing = tmp_path / "missing.json"
+    installer._remove_codex_hooks(missing, report)
+    installer._remove_json_hooks(missing, report)
+
+    unrelated = tmp_path / "hooks.json"
+    unrelated.write_text(json.dumps({"hooks": {"A": "x", "B": [{"c": 1}]}}), encoding="utf-8")
+    installer._remove_json_hooks(unrelated, report)
+    no_hooks = tmp_path / "other.json"
+    no_hooks.write_text(json.dumps({"hooks": []}), encoding="utf-8")
+    installer._remove_codex_hooks(no_hooks, report)
+
+    assert json.loads(unrelated.read_text(encoding="utf-8")) == {
+        "hooks": {"A": "x", "B": [{"c": 1}]}
+    }
+
+
+def test_remove_codex_hooks_drops_empty_hooks_section(tmp_path: Path) -> None:
+    installer = IntegrationInstaller(tmp_path)
+    installer.install(["codex"], project_id=PROJECT_ID)
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+
+    installer.uninstall(["codex"])
+
+    assert not hooks_path.exists() or "hooks" not in json.loads(
+        hooks_path.read_text(encoding="utf-8")
+    )

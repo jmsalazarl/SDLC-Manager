@@ -6,32 +6,15 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from integrations.common.hook_runner import run_native_event  # noqa: E402
+from integrations.common.hook_runner import (  # noqa: E402
+    build_context_message,
+    run_native_event,
+)
 
 
 def format_kiro_output(result: dict[str, Any]) -> str:
-    recommendations = result.get("recommendations")
-    messages = (
-        [item for item in recommendations if isinstance(item, str)]
-        if isinstance(recommendations, list)
-        else []
-    )
-    decision = result.get("decision")
-    explanation = result.get("explanation")
-    if not messages and decision in {"WARN", "BLOCK"} and isinstance(explanation, str):
-        messages.append(explanation)
-    if (
-        not messages
-        and result.get("status") in {"rejected", "unsupported", "error"}
-        and isinstance(explanation, str)
-    ):
-        messages.append(explanation)
-    if not messages:
-        return ""
-    context = "SDLC Manager:\n- " + "\n- ".join(messages)
-    if decision in {"WARN", "BLOCK"}:
-        context = f"{context}\nDecision: {decision}."
-    return context[:10000] + "\n"
+    context = build_context_message(result)
+    return f"{context}\n" if context else ""
 
 
 def format_kiro_exit_code(code: int) -> int:
