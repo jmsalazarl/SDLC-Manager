@@ -74,10 +74,17 @@ operaciones de memoria externa.
 `integrations/common/hook_runner.py` mantiene JSON en `stdout`, separa logs en
 `stderr`, limita stdin a 1 MiB y ejecuta el CLI sin shell concatenado.
 
-Claude Code usa además `hookSpecificOutput.additionalContext` mediante
+El procesador devuelve `recommendations` con mensajes acotados derivados de
+prácticas aprobadas y experiencias aprobadas. Esto evita que un adaptador solo
+transmita identificadores sin contenido útil.
+
+Claude Code usa `hookSpecificOutput.additionalContext` mediante
 `integrations/claude-code/hook_event.py`, que es el formato documentado para
-inyectar contexto junto al resultado de una herramienta. Kiro conserva la
-salida JSON del comando para que el hook pueda incorporarla a su contexto.
+inyectar contexto junto al resultado de una herramienta. Kiro usa la salida
+estandar del comando; cuando termina con codigo 0, Kiro la agrega al contexto
+del agente. El adaptador Kiro ahora renderiza recomendaciones como texto y el
+asset instalado es JSON valido.
+Codex usa el mismo campo mediante hooks de proyecto en `.codex/hooks.json`.
 
 ## Instalador seguro
 
@@ -117,15 +124,16 @@ secretos en los assets de integración.
 
 | Proveedor | Superficie instalada | Activación | Propagación contextual | Estado real |
 |---|---|---|---|---|
-| Kiro | MCP y hook `PostFileSave` | Comando del hook | stdout del comando | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
+| Kiro | MCP y hook `PostFileSave` | Comando del hook | stdout del comando producido y aceptado con código 0; reconocimiento por la respuesta final no confirmado | PARTIAL; evento real, hook, procesador y experiencia comprobados, visibilidad efectiva en la respuesta del agente no confirmada |
 | Claude Code | MCP, `PostToolUse` y bloque `CLAUDE.md` | Hook de comando | `hookSpecificOutput.additionalContext` | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
-| OpenCode | MCP y plugin local | Plugin `execute.after` | metadata del resultado de herramienta | IMPLEMENTADO; sintaxis no ejecutada en cliente real |
-| Codex | Paquete de plugin, MCP, skill y hooks revisables | Depende de activar y confiar el plugin | depende del runtime del plugin | IMPLEMENTADO como paquete; NO VERIFICADO en cliente real |
+| OpenCode | MCP y plugin local | Plugin `execute.after` | `metadata.sdlcManager` del resultado de herramienta | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
+| Codex | MCP, skill, paquete opcional y hooks de proyecto | `SessionStart`, `UserPromptSubmit` y `PostToolUse` | `hookSpecificOutput.additionalContext` | VALIDADO EN CLIENTE REAL en proyecto temporal; sin enforcement |
 
 La configuración MCP por sí sola no activa una consulta automática. Kiro y
 Claude Code disponen de hooks documentados; OpenCode dispone de plugins y
-hooks de servidor; el paquete Codex se entrega para revisión explícita y no
-se registra silenciosamente en un perfil global.
+hooks de servidor; Codex usa hooks de proyecto y requiere confianza explícita
+cuando el cliente la solicita. El instalador no registra plugins ni modifica
+perfiles globales.
 
 ## Instalación nativa
 
@@ -197,23 +205,31 @@ llamadas entre ambos productos.
 
 | Validación | Resultado |
 |---|---|
-| `uv run pytest -q` | 73 passed, 1 skipped, 28 warnings |
-| Pruebas de companion e integraciones | 16 passed, 1 warning |
-| `uv run ruff check .` | PASS |
-| `uv run ruff format --check .` | PASS |
-| `uv run mypy src integrations` | PASS, 52 archivos |
+| `.venv/bin/pytest -q` | 76 passed, 1 skipped, 8 warnings |
+| Pruebas de companion, eventos e integraciones | 29 passed |
+| `.venv/bin/ruff check .` | PASS |
+| `.venv/bin/ruff format --check .` | PASS, 156 archivos |
+| `.venv/bin/mypy src integrations` | PASS, 54 archivos |
+| `git diff --check` | PASS |
+| Parseo JSON/TOML de assets de integración | PASS |
 | Instalación y desinstalación de los cuatro proveedores en filesystem temporal | PASS |
-| Prueba de stdout visible del hook Claude con proceso falso | PASS |
-| `docker build -t sdlc-manager:latest .` | PASS |
-| Persistencia CLI en Docker con volumen temporal | PASS, 1 prueba |
+| Hook Kiro instalado con salida contextual y `uv --frozen` en filesystem temporal | PASS |
+| Adaptador OpenCode con payload nativo y proceso falso | PASS |
+| `opencode debug config` en proyecto temporal | PASS, código 0 |
+| Codex CLI 0.171.0 con proyecto y SQLite temporales | PASS; sesión real ejecutada con hooks de proyecto |
+| Payload real de Codex `apply_patch` y recuperación contextual | PASS; experiencia `payments` recuperada |
+| Propagación al contexto visible de Codex | PASS; el agente confirmó la recomendación en su respuesta |
+| `docker build -t sdlc-manager:latest .` | NO REPETIDO después de estos cambios |
+| Persistencia CLI en Docker con volumen temporal | Validación previa; no repetida en esta iteración |
 | `sddnxp validate . --json` | PASS, `valid: true`, sin issues |
-| OpenCode 1.19.0 con configuración temporal | PASS parcial, `opencode debug config` terminó con código 0 |
-| Kiro CLI 1.0.242 con configuración temporal | NO VERIFICADO, el cliente requirió autenticación |
-| Cliente Kiro, Codex, OpenCode y Claude Code real | NO VERIFICADO |
+| `codex mcp get sdlc-manager` | PASS, servidor stdio habilitado |
+| Kiro CLI 3.5.0 | PARTIAL; sesión autenticada real y `PostFileSave` observados. El hook recibió el payload real, recuperó la experiencia `payments`, emitió la recomendación por stdout y terminó con código 0. La respuesta final de Kiro indicó que no recibió contexto; la visibilidad efectiva en el contexto del agente queda sin confirmar |
+| OpenCode 1.19.0 en sesión real | NO VERIFICADO; solo se verificó configuración temporal |
+| Claude Code 2.1.328 en sesión real | NO VERIFICADO por ausencia de licencia de esta fase |
 
-El comando Docker y la validación SDD se ejecutan como parte del cierre de esta
-fase cuando las herramientas están disponibles. La matriz anterior no declara
-validación de cliente real basada únicamente en mocks.
+La matriz anterior distingue las pruebas del núcleo, los mocks de adaptadores y
+la validación de configuración. Ningún mock se presenta como ejecución real de
+un cliente.
 
 ## Referencias oficiales
 

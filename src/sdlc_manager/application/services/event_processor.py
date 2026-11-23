@@ -82,10 +82,14 @@ class SdlcEventProcessor:
 
     def _dispatch(self, event: SdlcEvent) -> EventProcessingResult:
         if event.event_type == SdlcEventType.SESSION_STARTED:
+            _, practices, experiences, recommendations = self._contextual_findings(event)
             return self._result(
                 event.event_id,
                 EventProcessingStatus.PROCESSED,
                 "Sesion registrada sin evaluacion de gate",
+                applicable_practices=practices,
+                relevant_experiences=experiences,
+                recommendations=recommendations,
             )
 
         if event.event_type == SdlcEventType.SPRINT_STARTED:
@@ -100,7 +104,7 @@ class SdlcEventProcessor:
                 decision=EvaluationResult.WARN if risks else None,
             )
 
-        rules, practices, experiences = self._contextual_findings(event)
+        rules, practices, experiences, recommendations = self._contextual_findings(event)
         if event.event_type == SdlcEventType.USER_STORY_STARTED:
             analysis = self.service.analyze_user_story(
                 self._project_id(event), self._story_id(event)
@@ -123,6 +127,7 @@ class SdlcEventProcessor:
                 workflow_checks=["story_ready"],
                 applicable_practices=practices,
                 relevant_experiences=experiences,
+                recommendations=recommendations,
             )
 
         if event.event_type == SdlcEventType.SDD_TASK_STARTED and "gate" not in event.context:
@@ -143,6 +148,7 @@ class SdlcEventProcessor:
                 workflow_checks=["story_ready"],
                 applicable_practices=practices,
                 relevant_experiences=experiences,
+                recommendations=recommendations,
             )
 
         if event.event_type in {
@@ -170,6 +176,7 @@ class SdlcEventProcessor:
                 ],
                 applicable_practices=practices,
                 relevant_experiences=experiences,
+                recommendations=recommendations,
                 missing_evidence=gate_result["missing_evidence"],
             )
 
@@ -181,13 +188,14 @@ class SdlcEventProcessor:
             triggered_rules=[item["id"] for item in rules],
             applicable_practices=practices,
             relevant_experiences=experiences,
+            recommendations=recommendations,
         )
 
     def _contextual_findings(
         self, event: SdlcEvent
-    ) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    ) -> tuple[list[dict[str, Any]], list[str], list[str], list[str]]:
         if event.project_id is None:
-            return [], [], []
+            return [], [], [], []
         context = self._service_context(event)
         component = resolve_component(context, event.affected_files)
         if component and "component" not in context:
@@ -209,7 +217,22 @@ class SdlcEventProcessor:
             experiences = self.experience_engine.search(
                 query, component, tags, project_id=event.project_id
             )[:5]
-        return rules, [str(item.id) for item in practices], [str(item.id) for item in experiences]
+        recommendations = [
+            f"Practica: {item.intervention_message}"
+            for item in practices[:5]
+            if item.intervention_message
+        ]
+        recommendations.extend(
+            f"Experiencia {item.title}: {item.lesson_learned}"
+            for item in experiences
+            if item.title and item.lesson_learned
+        )
+        return (
+            rules,
+            [str(item.id) for item in practices[:5]],
+            [str(item.id) for item in experiences],
+            recommendations[:10],
+        )
 
     @staticmethod
     def _project_id(event: SdlcEvent) -> UUID:
@@ -396,6 +419,7 @@ class SdlcEventProcessor:
         workflow_checks: list[str] | None = None,
         applicable_practices: list[str] | None = None,
         relevant_experiences: list[str] | None = None,
+        recommendations: list[str] | None = None,
         missing_evidence: list[str] | None = None,
         error_code: str | None = None,
         retryable: bool = False,
@@ -408,6 +432,7 @@ class SdlcEventProcessor:
             workflow_checks=workflow_checks or [],
             applicable_practices=applicable_practices or [],
             relevant_experiences=relevant_experiences or [],
+            recommendations=recommendations or [],
             missing_evidence=missing_evidence or [],
             explanation=explanation,
             error_code=error_code,

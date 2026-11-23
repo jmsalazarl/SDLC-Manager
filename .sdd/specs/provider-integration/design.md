@@ -141,6 +141,8 @@ Se reutiliza `SdlcEventProcessor` porque ya concentra normalización, idempotenc
 
 Los hooks y scripts usan el CLI porque evita iniciar una sesión MCP y permite conservar códigos de salida. MCP permanece como interfaz de consulta y ejecución interactiva.
 
+Los comandos de eventos se ejecutan con `uv --project` en lugar de `uv --directory`. Esto conserva el directorio de trabajo del proyecto del cliente para que los adaptadores puedan resolver `.sdlc-manager/config.json` sin depender de una variable de entorno global. En Codex, el payload real de `PostToolUse` puede transportar cambios mediante `tool_input.command`; el adaptador solo extrae las marcas estructuradas de `apply_patch` y no ejecuta ni interpreta shell arbitrario.
+
 ### Evidencia pendiente por defecto
 
 Los eventos automáticos son señales técnicas, no aprobaciones humanas. Registrar `PENDING` reduce el riesgo de que un modelo o un proveedor declare cumplimiento sin verificación trazable.

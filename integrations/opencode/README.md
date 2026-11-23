@@ -38,12 +38,20 @@ ejecución contra un cliente instalado debe verificarse por separado.
 
 OpenCode puede cargar archivos mediante `instructions`. La guía común indica
 cuándo consultar workflows, políticas, prácticas y memoria. El plugin local
-observa `execute.after`, traduce entradas de archivos y agrega la respuesta al
-metadata del resultado. La ejecución del plugin contra un cliente instalado
-continúa sin validación real en este entorno.
+observa `execute.after`, identifica entradas de archivo, envía el payload nativo
+al adaptador `process_event.py` y agrega la respuesta del procesador al campo
+`metadata.sdlcManager` del resultado de la herramienta. La ejecución del
+plugin contra un cliente instalado continúa sin validación real en este
+entorno.
+
+El adaptador normaliza el evento con el directorio del workspace como raíz del
+proyecto. El identificador del proyecto se obtiene de
+`.sdlc-manager/config.json` o de `SDLC_MANAGER_PROJECT_ID`; no se utiliza la
+identidad de OpenCode como aprobación confiable.
 
 ## Referencias oficiales
 
 - [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers)
 - [OpenCode instructions](https://opencode.ai/docs/instructions/)
 - [OpenCode plugins](https://opencode.ai/docs/plugins/)
+- [OpenCode server plugins](https://opencode.ai/docs/build/plugins/server)

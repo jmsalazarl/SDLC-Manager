@@ -78,6 +78,7 @@ def test_contextual_practice_returns_warning_without_block(container) -> None:
 
     assert result.decision == EvaluationResult.WARN
     assert result.applicable_practices == [str(practice.id)]
+    assert result.recommendations == ["Practica: Revisar feature flags"]
 
 
 def test_event_context_respects_project_isolation_and_finds_experience(container) -> None:

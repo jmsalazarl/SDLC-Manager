@@ -5,7 +5,7 @@ const eventId = (input: Record<string, unknown>) =>
   typeof input.event_id === "string" ? input.event_id : undefined
 
 async function processEvent(directory: string, input: Record<string, unknown>) {
-  const child = Bun.spawn(["uv", "--directory", "__SDLC_MANAGER_ROOT__", "run", "--frozen", "sdlc-manager", "event", "process", "--stdin"], {
+  const child = Bun.spawn(["uv", "--project", "__SDLC_MANAGER_ROOT__", "run", "--frozen", "python", "__SDLC_MANAGER_ROOT__/integrations/opencode/process_event.py"], {
     cwd: directory,
     stdin: "pipe",
     stdout: "pipe",
@@ -30,22 +30,25 @@ export default Plugin.define({
       const toolInput = (event.input ?? {}) as Record<string, unknown>
       const path = typeof toolInput.filePath === "string"
         ? toolInput.filePath
-        : typeof toolInput.file_path === "string" ? toolInput.file_path : undefined
+        : typeof toolInput.file_path === "string"
+          ? toolInput.file_path
+          : typeof toolInput.path === "string" ? toolInput.path : undefined
       if (!path) return
       const normalized = {
         event_id: eventId(toolInput),
-      event_type: "file_changed",
-      source_client: "opencode",
-      project_id: process.env.SDLC_MANAGER_PROJECT_ID,
-      timestamp: new Date().toISOString(),
+        event_type: "file_changed",
+        source_client: "opencode",
+        project_root: ctx.location.directory,
+        path,
+        timestamp: new Date().toISOString(),
         affected_files: [path],
-      context: {},
-      schema_version: "1.0",
-    }
+        context: {},
+        schema_version: "1.0",
+      }
       const result = await processEvent(ctx.location.directory, normalized)
       event.result = {
         ...event.result,
-        metadata: { ...event.result.metadata, sdlcManager: result },
+        metadata: { ...(event.result.metadata ?? {}), sdlcManager: result },
       }
     })
   },

@@ -6,7 +6,7 @@ Se implementará una integración vertical reutilizando el CLI, MCP, `SdlcEventP
 
 ## Tasks
 
-- [ ] 1. Confirmar contratos y versiones soportadas
+- [x] 1. Confirmar contratos y versiones soportadas
   - Registrar las versiones instaladas o marcar el proveedor como `NOT_TESTED` cuando no esté disponible.
   - Verificar contra documentación oficial el schema de entrada, salida, timeout y enforcement de cada superficie.
   - _Requerimiento: Requirement 2, Requirement 10_
@@ -20,9 +20,9 @@ Se implementará una integración vertical reutilizando el CLI, MCP, `SdlcEventP
   - _Capa: Aplicación / CI_
   - _Depende de: 1_
 
-- [ ] 3. Implementar el adaptador vertical del proveedor inicial
-  - Seleccionar la superficie oficial con salida visible y enforcement documentado.
-  - Traducir eventos al CLI y renderizar `PASS`, `WARN`, `BLOCK`, errores y estados no verificables.
+- [x] 3. Implementar el adaptador vertical del proveedor inicial
+  - Seleccionar hooks de proyecto de Codex con salida contextual documentada.
+  - Traducir eventos al CLI y renderizar recomendaciones, `PASS`, `WARN`, `BLOCK`, errores y estados no verificables.
   - _Requerimiento: Requirement 1, Requirement 3, Requirement 6_
   - _Capa: Integración_
   - _Depende de: 1, 2_

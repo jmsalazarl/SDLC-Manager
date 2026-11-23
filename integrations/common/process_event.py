@@ -18,6 +18,7 @@ MANAGER_ROOT = Path(__file__).resolve().parents[2]
 def run_normalized_event(
     default_source_client: str,
     output_formatter: Callable[[dict[str, Any]], str] | None = None,
+    exit_code_formatter: Callable[[int], int] | None = None,
 ) -> int:
     """Invoca el CLI sin shell y conserva su contrato de salida."""
     raw = sys.stdin.buffer.read(MAX_EVENT_BYTES + 1)
@@ -74,6 +75,8 @@ def run_normalized_event(
             formatted = result.stdout
         sys.stdout.write(formatted)
     sys.stdout.flush()
+    if exit_code_formatter is not None:
+        return exit_code_formatter(result.returncode)
     return result.returncode
 
 
@@ -86,6 +89,7 @@ def write_adapter_error(error_code: str, explanation: str) -> int:
         "workflow_checks": [],
         "applicable_practices": [],
         "relevant_experiences": [],
+        "recommendations": [],
         "missing_evidence": [],
         "explanation": explanation,
         "error_code": error_code,

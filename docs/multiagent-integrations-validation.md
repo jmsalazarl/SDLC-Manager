@@ -37,9 +37,9 @@ de demostración.
 
 | Cliente | Archivos principales | Estado |
 |---|---|---|
-| Kiro | `integrations/kiro/mcp.*`, `integrations/kiro/hooks/sdlc-file-save.example.json`, `integrations/kiro/kiro_event_adapter.py` | MCP **IMPLEMENTADO**; hook **PROBADO CON MOCK**; cliente real **NO VALIDADO EN CLIENTE REAL** |
-| Codex | `integrations/codex/mcp.config.example.toml`, `AGENTS.sdlc-manager.md`, `process_event.py` | MCP e instrucciones **IMPLEMENTADO**; wrapper **PROBADO CON MOCK**; cliente real **NO VALIDADO EN CLIENTE REAL** |
-| OpenCode | `integrations/opencode/opencode.config.example.jsonc`, `process_event.py` | MCP e instrucciones **IMPLEMENTADO**; wrapper **PROBADO CON MOCK**; cliente real **NO VALIDADO EN CLIENTE REAL** |
+| Kiro | `integrations/kiro/mcp.*`, `integrations/kiro/hooks/sdlc-file-save.*`, `integrations/kiro/kiro_event_adapter.py` | MCP y hook instalado **IMPLEMENTADO**; payload `PostFileSave` y salida contextual **VALIDADOS EN PRUEBA DE CONTRATO**; cliente real **PARTIAL** |
+| Codex | `integrations/codex/mcp.config.example.toml`, `AGENTS.sdlc-manager.md`, `process_event.py` | MCP, instrucciones y hooks **IMPLEMENTADO**; flujo E2E **VALIDADO EN CLIENTE REAL** en proyecto temporal |
+| OpenCode | `integrations/opencode/opencode.config.example.jsonc`, `plugin/index.ts`, `process_event.py` | MCP, plugin y wrapper **IMPLEMENTADO**; normalización nativa **PROBADA CON MOCK**; cliente real **NO VALIDADO EN CLIENTE REAL** |
 | Claude Code | `integrations/claude-code/.mcp.json.example`, `CLAUDE.md.example`, `process_event.py` | MCP e instrucciones **IMPLEMENTADO**; wrapper **PROBADO CON MOCK**; cliente real **NO VALIDADO EN CLIENTE REAL** |
 
 La guía común está en `integrations/common/sdlc-manager-instructions.md`.
@@ -77,9 +77,11 @@ existente. Las referencias utilizadas son [Codex MCP](https://developers.openai.
 
 `integrations/opencode/opencode.config.example.jsonc` usa la estructura
 `mcp.servers` con un servidor `local` y carga la guía común con `instructions`.
-Las referencias son [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers),
+El plugin local observa `execute.after`, envía el payload nativo a
+`integrations/opencode/process_event.py` y conserva la respuesta bajo
+`metadata.sdlcManager`. Las referencias son [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers),
 [OpenCode instructions](https://opencode.ai/docs/instructions/) y
-[OpenCode plugins](https://opencode.ai/docs/plugins/).
+[OpenCode server plugins](https://opencode.ai/docs/build/plugins/server).
 
 ### Claude Code
 
@@ -98,10 +100,10 @@ instrucciones del proyecto. Las referencias son [Claude Code MCP](https://docs.a
 | Instrucciones persistentes | IMPLEMENTADO | IMPLEMENTADO | IMPLEMENTADO | IMPLEMENTADO |
 | Wrapper CLI | IMPLEMENTADO | IMPLEMENTADO | IMPLEMENTADO | IMPLEMENTADO |
 | Consulta de workflow y memoria mediante MCP | IMPLEMENTADO en el núcleo | IMPLEMENTADO en el núcleo | IMPLEMENTADO en el núcleo | IMPLEMENTADO en el núcleo |
-| Persistencia después de reiniciar el proceso | PROBADO en CLI/Docker; cliente no real | PROBADO en CLI/Docker; cliente no real | PROBADO en CLI/Docker; cliente no real | PROBADO en CLI/Docker; cliente no real |
-| Evento nativo automáticamente traducido | PostFileSave de ejemplo, PROBADO CON MOCK | NO VERIFICADO | NO VERIFICADO | NO VERIFICADO |
+| Persistencia después de reiniciar el proceso | PROBADO en CLI/Docker; sesión Kiro real ejecutada | PROBADO en CLI/Docker; cliente real probado | PROBADO en CLI/Docker; cliente no real | PROBADO en CLI/Docker; cliente no real |
+| Evento nativo automáticamente traducido | `PostFileSave` instalado; payload real y salida contextual validados | `PostToolUse` real, payload `apply_patch` procesado | `execute.after`, PROBADO CON MOCK | Hook preparado, PROBADO CON MOCK |
 | Hook de bloqueo configurado | NO IMPLEMENTADO | NO VERIFICADO | NO VERIFICADO | NO IMPLEMENTADO |
-| Validación en cliente real | NO VALIDADO EN CLIENTE REAL | NO VALIDADO EN CLIENTE REAL | NO VALIDADO EN CLIENTE REAL | NO VALIDADO EN CLIENTE REAL |
+| Validación en cliente real | PARTIAL: hook ejecutado; propagación posterior pendiente | VALIDADO EN CLIENTE REAL para el flujo observado | NO VALIDADO EN CLIENTE REAL | NO VALIDADO EN CLIENTE REAL |
 
 La configuración MCP no implica invocación automática. Las instrucciones
 persistentes tampoco constituyen enforcement. El cliente debe ofrecer un hook o
@@ -115,7 +117,7 @@ plugin documentado y probado para aplicar una decisión.
 | `sprint_started` | IMPLEMENTADO | Wrapper manual | Wrapper manual | Wrapper manual | Wrapper manual |
 | `user_story_started` | IMPLEMENTADO | Wrapper manual | Wrapper manual | Wrapper manual | Wrapper manual |
 | `sdd_task_started` | IMPLEMENTADO | Wrapper manual | Wrapper manual | Wrapper manual | Wrapper manual |
-| `file_changed` | IMPLEMENTADO | PostFileSave, PROBADO CON MOCK | No verificado | No verificado | No verificado |
+| `file_changed` | IMPLEMENTADO | PostFileSave, payload real y salida contextual validados | PostToolUse, VALIDADO EN CLIENTE REAL para `apply_patch` | execute.after, PROBADO CON MOCK | PostToolUse, PROBADO CON MOCK |
 | `task_completed` | IMPLEMENTADO | Wrapper manual | Wrapper manual | Wrapper manual | Wrapper manual |
 | `gate_evaluation_requested` | IMPLEMENTADO | Wrapper manual | Wrapper manual | Wrapper manual | Wrapper manual |
 | `incident_recorded` | IMPLEMENTADO | Wrapper manual | Wrapper manual | Wrapper manual | Wrapper manual |
@@ -158,24 +160,27 @@ Resultados reales de esta fase:
 
 | Comando | Resultado |
 |---|---|
-| `uv run pytest tests/integration/test_multiagent_integrations.py -q` | `7 passed`, `1 warning` |
-| `uv run pytest -q` | `64 passed`, `1 skipped`, `28 warnings` antes de habilitar Docker |
-| `SDLC_MANAGER_RUN_DOCKER_TESTS=1 uv run pytest -q` | `65 passed`, `28 warnings` |
-| `uv run ruff check .` | Exitoso |
-| `uv run ruff format --check .` | Exitoso; `60 files already formatted` |
-| `uv run mypy src` | Exitoso; sin errores en 36 archivos fuente |
-| `uv run mypy integrations` | Exitoso; sin errores en 8 archivos de adaptadores |
+| `.venv/bin/pytest -q` | `76 passed`, `1 skipped`, `8 warnings` |
+| `.venv/bin/pytest` en companion, eventos e integraciones | `29 passed` |
+| `.venv/bin/ruff check .` | Exitoso |
+| `.venv/bin/ruff format --check .` | Exitoso; `156 files already formatted` |
+| `.venv/bin/mypy src integrations` | Exitoso; sin errores en 54 archivos fuente |
+| `git diff --check` | Exitoso |
+| Parseo de assets JSON/TOML | Exitoso |
 | `sddnxp validate . --json` | Exitoso; `valid: true`, `issues: []` |
-| `docker build -t sdlc-manager:latest .` | Exitoso |
-| `uv run alembic` con configuración y SQLite temporales | Exitoso; migraciones 0001 a 0004 aplicadas |
+| `docker build -t sdlc-manager:latest .` | Validación previa; no repetida en esta iteración |
+| `uv run alembic` con configuración y SQLite temporales | Exitoso en validación previa; no se ejecutó sobre la base local |
+| Codex CLI 0.171.0 con proyecto temporal | PASS; sesión real y hooks ejecutados |
+| Recuperación de experiencia `payments` desde `PostToolUse` | PASS; el resultado persistido incluyó recomendación contextual |
+| Contexto visible para el agente Codex | PASS; la respuesta final confirmó la recomendación recibida |
 
 La validación en cliente real no forma parte de los resultados locales.
 
 ## 8. Funcionalidades no verificadas
 
-- Ejecución contra Kiro, Codex, OpenCode y Claude Code instalados localmente.
-- Payload exacto de hooks de cada cliente en la versión instalada por el
-  usuario.
+- Ejecución de una sesión autenticada contra Kiro, OpenCode y Claude Code.
+- Payload exacto de hooks de Kiro, OpenCode y Claude Code en las versiones
+  instaladas por el usuario.
 - Enforcement real de `BLOCK` en un flujo de edición o herramienta.
 - Compatibilidad de cada configuración con futuras versiones del cliente.
 - Concurrencia de varios hooks simultáneos sobre la misma SQLite.
@@ -221,6 +226,12 @@ configuración del cliente, sin tocar `/app/data` ni la base local.
    los límites de SQLite.
 5. Mantener los wrappers como adaptadores del contrato, no como otra ubicación
    de reglas.
+
+La prueba E2E de Codex utilizó un proyecto temporal, una base SQLite aislada y
+un hook confiado únicamente para esa ejecución. El payload real de `PostToolUse`
+contiene comandos `apply_patch`; el adaptador extrae únicamente las marcas
+deterministas `Update File`, `Add File` y `Delete File`, sin ejecutar comandos ni
+interpretar shell arbitrario.
 
 La primera integración vertical queda preparada para Kiro mediante MCP y un
 hook informativo de archivo. Las otras tres quedan preparadas para instalación

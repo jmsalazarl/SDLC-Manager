@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -14,6 +15,9 @@ from .process_event import run_normalized_event, write_adapter_error
 def run_native_event(
     source_client: str,
     output_formatter: Callable[[dict[str, Any]], str] | None = None,
+    default_event_type: str | None = None,
+    require_affected_files: bool = False,
+    exit_code_formatter: Callable[[int], int] | None = None,
 ) -> int:
     raw = sys.stdin.buffer.read(MAX_EVENT_BYTES + 1)
     if len(raw) > MAX_EVENT_BYTES:
@@ -25,19 +29,23 @@ def run_native_event(
     if not isinstance(payload, dict):
         return write_adapter_error("INVALID_EVENT", "El evento debe ser un objeto JSON")
     try:
-        event = normalize_native_event(payload, source_client)
+        event = normalize_native_event(payload, source_client, default_event_type)
+        if require_affected_files and not event["affected_files"]:
+            raise ValueError("el evento requiere al menos un archivo afectado")
     except ValueError as error:
         return write_adapter_error("INVALID_EVENT", str(error))
     original = sys.stdin
     try:
         sys.stdin = _JsonInput(event)
-        return run_normalized_event(source_client, output_formatter)
+        return run_normalized_event(source_client, output_formatter, exit_code_formatter)
     finally:
         sys.stdin = original
 
 
-def normalize_native_event(payload: Mapping[str, Any], source_client: str) -> dict[str, Any]:
-    event_type = _event_type(payload)
+def normalize_native_event(
+    payload: Mapping[str, Any], source_client: str, default_event_type: str | None = None
+) -> dict[str, Any]:
+    event_type = _event_type(payload, default_event_type)
     files = _files(payload)
     context = _context(payload)
     project_id = _first_text(payload, "project_id", "projectId") or project_id_from_environment()
@@ -67,8 +75,9 @@ def normalize_native_event(payload: Mapping[str, Any], source_client: str) -> di
     return event
 
 
-def _event_type(payload: Mapping[str, Any]) -> str:
+def _event_type(payload: Mapping[str, Any], default_event_type: str | None = None) -> str:
     raw = (_first_text(payload, "event_type", "eventType", "hook_event_name", "type") or "").lower()
+    raw = raw or (default_event_type or "").lower()
     mapping = {
         "sessionstart": "session_started",
         "session_start": "session_started",
@@ -116,6 +125,16 @@ def _files(payload: Mapping[str, Any], project_root: Path | None = None) -> list
                 normalized = _normalize_file_path(item, root)
                 if normalized:
                     values.append(normalized)
+    command = payload.get("command")
+    if isinstance(command, str):
+        for match in re.finditer(
+            r"^\*\*\* (?:Update|Add|Delete) File:\s+(.+?)\s*$",
+            command,
+            re.MULTILINE,
+        ):
+            normalized = _normalize_file_path(match.group(1), root)
+            if normalized:
+                values.append(normalized)
     return list(dict.fromkeys(values))[:100]
 
 

@@ -56,6 +56,7 @@ Los eventos inválidos no ejecutan casos de uso. `process_payload` devuelve `INV
 - `workflow_checks`;
 - `applicable_practices`;
 - `relevant_experiences`;
+- `recommendations`: mensajes acotados para el canal contextual del proveedor;
 - `missing_evidence`;
 - `explanation`;
 - `error_code`;

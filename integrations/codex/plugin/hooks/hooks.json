@@ -6,7 +6,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/event.py session_started"
+            "command": "uv --project \"__SDLC_MANAGER_ROOT__\" run --frozen python \"${PLUGIN_ROOT}/hooks/event.py\" SessionStart",
+            "statusMessage": "Loading SDLC Manager context",
+            "additionalContextLimit": 1200
           }
         ]
       }
@@ -16,17 +18,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/event.py session_started"
+            "command": "uv --project \"__SDLC_MANAGER_ROOT__\" run --frozen python \"${PLUGIN_ROOT}/hooks/event.py\" UserPromptSubmit",
+            "statusMessage": "Reviewing SDLC Manager context",
+            "additionalContextLimit": 1200
           }
         ]
       }
     ],
-    "TaskCompleted": [
+    "PostToolUse": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/event.py task_completed"
+            "command": "uv --project \"__SDLC_MANAGER_ROOT__\" run --frozen python \"${PLUGIN_ROOT}/hooks/event.py\" PostToolUse",
+            "statusMessage": "Reviewing SDLC Manager context",
+            "additionalContextLimit": 1200
           }
         ]
       }

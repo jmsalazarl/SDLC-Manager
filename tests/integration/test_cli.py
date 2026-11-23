@@ -185,6 +185,23 @@ def test_cli_reports_bootstrap_error_without_success(tmp_path: Path) -> None:
     assert process.stderr
 
 
+def test_cli_uses_installed_resources_from_external_project_root(tmp_path: Path) -> None:
+    database = tmp_path / "external.db"
+    environment = cli_env(database)
+    environment.update(
+        {
+            "SDLC_MANAGER_PROJECT_ROOT": str(tmp_path),
+            "SDLC_MANAGER_POLICY_PATHS": json.dumps(["knowledge/rules"]),
+            "SDLC_MANAGER_WORKFLOW_TEMPLATE_PATH": "knowledge/sdlc/default.yaml",
+        }
+    )
+
+    process = invoke_cli(database, event_payload("session_started"), environment=environment)
+
+    assert process.returncode == 0
+    assert result(process)["status"] == "PROCESSED"
+
+
 @pytest.mark.skipif(
     os.getenv("SDLC_MANAGER_RUN_DOCKER_TESTS") != "1" or shutil.which("docker") is None,
     reason="La prueba Docker se habilita explicitamente con SDLC_MANAGER_RUN_DOCKER_TESTS=1",

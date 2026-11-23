@@ -23,12 +23,22 @@ class Settings(BaseSettings):
     auto_migrate: bool = True
     project_root: Path = Field(default_factory=lambda: Path.cwd())
 
+    @property
+    def resource_root(self) -> Path:
+        """Devuelve la raiz instalada que contiene migraciones y conocimiento."""
+        return Path(__file__).resolve().parents[2]
+
     def resolved_policy_paths(self) -> list[Path]:
         return [self.resolve_path(item) for item in self.policy_paths]
 
     def resolve_path(self, value: str | Path) -> Path:
         path = Path(value)
-        return path if path.is_absolute() else self.project_root / path
+        if path.is_absolute():
+            return path
+        project_path = self.project_root / path
+        if project_path.exists():
+            return project_path
+        return self.resource_root / path
 
 
 @lru_cache

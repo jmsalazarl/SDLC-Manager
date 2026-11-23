@@ -56,6 +56,7 @@ Ejemplo de evento informativo:
   "workflow_checks": [],
   "applicable_practices": [],
   "relevant_experiences": [],
+  "recommendations": [],
   "missing_evidence": [],
   "explanation": "Sesion registrada sin evaluacion de gate",
   "error_code": null,

@@ -151,6 +151,9 @@ class IntegrationInstaller:
             existing_files = [item for item in target.rglob("*") if item.is_file()]
             if existing_files and not target_owned:
                 raise IntegrationError(f"el destino contiene archivos ajenos: {target}")
+        self._validate_json_mutation(
+            self.scope.root / ".codex" / "hooks.json", self._merge_codex_hooks
+        )
 
     def _install_snapshot_paths(self, providers: list[str]) -> list[Path]:
         paths = {self.state_root}
@@ -275,7 +278,10 @@ class IntegrationInstaller:
                 self._opencode_jsonc(),
                 root / ".opencode" / "plugins" / "sdlc-manager",
             ]
-        return [root / ".sdlc-manager" / "providers" / "codex-plugin"]
+        return [
+            root / ".codex" / "hooks.json",
+            root / ".sdlc-manager" / "providers" / "codex-plugin",
+        ]
 
     def _write_project_config(self, project_id: str, report: dict[str, Any]) -> None:
         if self.scope.name != "project":
@@ -350,10 +356,13 @@ class IntegrationInstaller:
             {"__SDLC_MANAGER_ROOT__": self._manager_root_literal()},
         )
         self._write_owned(target / ".sdlc-manager.manifest", MANAGED_MARKER + "\n", report)
+        self._merge_json(self.scope.root / ".codex" / "hooks.json", self._merge_codex_hooks, report)
         self._write_owned(
             self.state_root / "instructions" / "codex.md", self._instructions(), report
         )
-        report["warnings"].append("Codex requiere revisar y confiar el plugin en el runtime")
+        report["warnings"].append(
+            "Codex requiere confiar los hooks del proyecto antes de ejecutarlos"
+        )
 
     def _uninstall_kiro(self, report: dict[str, Any]) -> None:
         self._remove_json_entry(
@@ -385,6 +394,7 @@ class IntegrationInstaller:
         self._remove_owned(self.state_root / "instructions" / "opencode.md", report)
 
     def _uninstall_codex(self, report: dict[str, Any]) -> None:
+        self._remove_codex_hooks(self.scope.root / ".codex" / "hooks.json", report)
         self._remove_owned_tree(
             self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin", report
         )
@@ -417,6 +427,43 @@ class IntegrationInstaller:
         if plugin_path not in plugins:
             plugins.append(plugin_path)
 
+    def _merge_codex_hooks(self, data: dict[str, Any]) -> None:
+        hooks = data.setdefault("hooks", {})
+        if not isinstance(hooks, dict):
+            raise IntegrationError("hooks de Codex no es un objeto")
+        script = (
+            self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin" / "hooks" / "event.py"
+        )
+        command = shlex.join(
+            [
+                "uv",
+                "--project",
+                str(self.manager_root),
+                "run",
+                "--frozen",
+                "python",
+                str(script),
+            ]
+        )
+        for event_name in ("SessionStart", "UserPromptSubmit", "PostToolUse"):
+            entries = hooks.setdefault(event_name, [])
+            if not isinstance(entries, list):
+                raise IntegrationError(f"hooks.{event_name} de Codex no es una lista")
+            if any(command in json.dumps(item, sort_keys=True) for item in entries):
+                continue
+            entries.append(
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": f"{command} {event_name}",
+                            "statusMessage": "Reviewing SDLC Manager context",
+                            "additionalContextLimit": 1200,
+                        }
+                    ]
+                }
+            )
+
     def _merge_claude_hooks(self, data: dict[str, Any]) -> None:
         hooks = data.setdefault("hooks", {})
         entries = hooks.setdefault("PostToolUse", [])
@@ -427,7 +474,7 @@ class IntegrationInstaller:
             command = shlex.join(
                 [
                     "uv",
-                    "--directory",
+                    "--project",
                     str(self.manager_root),
                     "run",
                     "python",
@@ -639,6 +686,32 @@ class IntegrationInstaller:
             elif name in hooks:
                 del hooks[name]
         if changed:
+            self._write_json(path, data, report)
+
+    def _remove_codex_hooks(self, path: Path, report: dict[str, Any]) -> None:
+        if not path.is_file():
+            return
+        data = self._read_json(path)
+        hooks = data.get("hooks")
+        if not isinstance(hooks, dict):
+            return
+        script = (
+            self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin" / "hooks" / "event.py"
+        )
+        marker = str(script)
+        changed = False
+        for name, entries in list(hooks.items()):
+            if not isinstance(entries, list):
+                continue
+            filtered = [item for item in entries if marker not in json.dumps(item, sort_keys=True)]
+            changed = changed or len(filtered) != len(entries)
+            if filtered:
+                hooks[name] = filtered
+            else:
+                del hooks[name]
+        if changed:
+            if not hooks:
+                data.pop("hooks", None)
             self._write_json(path, data, report)
 
     def _remove_opencode_config(self, path: Path, report: dict[str, Any]) -> None:

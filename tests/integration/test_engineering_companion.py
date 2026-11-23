@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -98,6 +99,28 @@ def test_hook_runner_relativizes_absolute_provider_paths(tmp_path: Path) -> None
         )
 
 
+def test_codex_apply_patch_payload_extracts_changed_file(tmp_path: Path) -> None:
+    event = normalize_native_event(
+        {
+            "hook_event_name": "PostToolUse",
+            "cwd": str(tmp_path),
+            "project_id": PROJECT_ID,
+            "tool_name": "apply_patch",
+            "tool_input": {
+                "command": (
+                    "*** Begin Patch\n"
+                    "*** Update File: src/payments/payment_service.py\n"
+                    "@@\n"
+                    "*** End Patch"
+                )
+            },
+        },
+        "codex",
+    )
+
+    assert event["affected_files"] == ["src/payments/payment_service.py"]
+
+
 def test_project_id_can_be_loaded_from_managed_project_config(tmp_path: Path, monkeypatch) -> None:
     config = tmp_path / ".sdlc-manager" / "config.json"
     config.parent.mkdir(parents=True)
@@ -171,6 +194,75 @@ def test_installer_is_additive_idempotent_and_selective(tmp_path: Path) -> None:
     final = json.loads(config.read_text(encoding="utf-8"))
     assert removed["status"] == "uninstalled"
     assert final == {"mcpServers": {"other": {"command": "other"}}}
+
+
+def test_codex_installer_adds_project_hooks_and_formats_context(tmp_path: Path) -> None:
+    hooks_path = tmp_path / ".codex" / "hooks.json"
+    hooks_path.parent.mkdir(parents=True)
+    hooks_path.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "third-party"}]}]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    installer = IntegrationInstaller(tmp_path)
+    installer.install(["codex"], project_id=PROJECT_ID)
+
+    installed = json.loads(hooks_path.read_text(encoding="utf-8"))
+    assert len(installed["hooks"]["SessionStart"]) == 1
+    assert len(installed["hooks"]["PostToolUse"]) == 1
+    assert len(installed["hooks"]["UserPromptSubmit"]) == 2
+
+    fake_cli = tmp_path / "fake_cli.py"
+    fake_cli.write_text(
+        "import json\n"
+        "print(json.dumps({'decision': 'WARN', 'recommendations': "
+        "['Revisar el riesgo del componente'], 'explanation': 'Contexto disponible'}))\n",
+        encoding="utf-8",
+    )
+    command = installed["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
+    assert "--project" in command
+    script_tokens = shlex.split(command.split(" PostToolUse", 1)[0])
+    script = script_tokens[script_tokens.index("python") + 1]
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "PYTHONPATH": str(ROOT),
+            "SDLC_MANAGER_COMMAND": f"{sys.executable} {fake_cli}",
+        }
+    )
+    process = subprocess.run(
+        [sys.executable, script, "PostToolUse"],
+        input=json.dumps(
+            {
+                "hook_event_name": "PostToolUse",
+                "cwd": str(tmp_path),
+                "tool_use_id": "tool-1",
+                "tool_input": {"file_path": "src/payments.py"},
+            }
+        ).encode(),
+        capture_output=True,
+        cwd=tmp_path,
+        env=environment,
+        check=False,
+    )
+
+    assert process.returncode == 0
+    output = json.loads(process.stdout)
+    assert output["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
+    assert "Revisar el riesgo del componente" in output["hookSpecificOutput"]["additionalContext"]
+    assert process.stderr == b""
+
+    installer.uninstall(["codex"])
+    final = json.loads(hooks_path.read_text(encoding="utf-8"))
+    assert final == {
+        "hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "third-party"}]}]}
+    }
+    assert not (tmp_path / ".sdlc-manager" / "providers" / "codex-plugin").exists()
 
 
 def test_installer_rejects_opencode_jsonc_without_writing(tmp_path: Path) -> None:

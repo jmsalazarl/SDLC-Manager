@@ -5,7 +5,7 @@
     "sdlc-manager": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--frozen", "sdlc-manager"]
+      "args": ["--directory", "__SDLC_MANAGER_ROOT__", "run", "--frozen", "sdlc-manager"]
     }
   }
 }

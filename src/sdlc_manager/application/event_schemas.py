@@ -161,6 +161,7 @@ class EventProcessingResult(BaseModel):
     workflow_checks: list[str] = Field(default_factory=list)
     applicable_practices: list[str] = Field(default_factory=list)
     relevant_experiences: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list, max_length=10)
     missing_evidence: list[str] = Field(default_factory=list)
     explanation: str
     error_code: str | None = None
