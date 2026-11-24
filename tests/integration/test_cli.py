@@ -129,6 +129,101 @@ def test_cli_returns_distinct_info_pass_warn_and_block_codes(tmp_path: Path) -> 
     assert result(blocked)["decision"] == "BLOCK"
 
 
+def test_cli_init_codex_installs_local_plugin_in_project_scope(tmp_path: Path) -> None:
+    project_id = str(uuid4())
+    environment = os.environ.copy()
+    environment.update({"PYTHONPATH": str(ROOT / "src"), "SDLC_MANAGER_PROJECT_ROOT": str(ROOT)})
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sdlc_manager",
+            "init",
+            "codex",
+            "--project-root",
+            str(tmp_path),
+            "--project-id",
+            project_id,
+        ],
+        capture_output=True,
+        cwd=ROOT,
+        env=environment,
+        check=False,
+    )
+
+    assert process.returncode == 0
+    result_payload = json.loads(process.stdout)
+    assert result_payload["status"] == "installed"
+    assert (tmp_path / ".codex" / "config.toml").is_file()
+    assert (tmp_path / ".agents" / "plugins" / "marketplace.json").is_file()
+    assert (tmp_path / ".sdlc-manager" / "providers" / "codex-plugin" / "plugin.json").is_file()
+
+
+def test_cli_init_requires_project_identity_before_writing(tmp_path: Path) -> None:
+    environment = os.environ.copy()
+    environment.update({"PYTHONPATH": str(ROOT / "src"), "SDLC_MANAGER_PROJECT_ROOT": str(ROOT)})
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sdlc_manager",
+            "init",
+            "codex",
+            "--project-root",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        cwd=ROOT,
+        env=environment,
+        check=False,
+    )
+
+    assert process.returncode == 40
+    assert json.loads(process.stdout)["status"] == "rejected"
+    assert not (tmp_path / ".codex").exists()
+
+
+def test_cli_hook_loads_claude_adapter_from_packaged_asset(tmp_path: Path) -> None:
+    fake_cli = tmp_path / "fake_cli.py"
+    fake_cli.write_text(
+        "import json\n"
+        "print(json.dumps({'decision': 'WARN', 'recommendations': ['Revisar pagos']}))\n",
+        encoding="utf-8",
+    )
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "PYTHONPATH": f"{ROOT / 'src'}:{ROOT}",
+            "SDLC_MANAGER_COMMAND": f"{sys.executable} {fake_cli}",
+            "SDLC_MANAGER_PROJECT_ID": str(uuid4()),
+        }
+    )
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "sdlc_manager",
+            "hook",
+            "claude-code",
+            "--format",
+            "claude",
+            "--event",
+            "PostToolUse",
+        ],
+        input=json.dumps({"type": "PostToolUse", "path": "src/payments.py"}).encode("utf-8"),
+        capture_output=True,
+        cwd=tmp_path,
+        env=environment,
+        check=False,
+    )
+
+    assert process.returncode == 0
+    output = json.loads(process.stdout)
+    assert output["hookSpecificOutput"]["additionalContext"] == (
+        "SDLC Manager:\n- Revisar pagos\nDecision: WARN."
+    )
+
+
 def test_cli_rejects_invalid_json_uuid_and_oversized_input(tmp_path: Path) -> None:
     database = tmp_path / "invalid.db"
     invalid_json = invoke_cli(database, b"{not-json")
@@ -183,6 +278,23 @@ def test_cli_reports_bootstrap_error_without_success(tmp_path: Path) -> None:
     assert result(process)["status"] == "ERROR"
     assert result(process)["error_code"] == "CLI_BOOTSTRAP_ERROR"
     assert process.stderr
+
+
+def test_cli_uses_installed_resources_from_external_project_root(tmp_path: Path) -> None:
+    database = tmp_path / "external.db"
+    environment = cli_env(database)
+    environment.update(
+        {
+            "SDLC_MANAGER_PROJECT_ROOT": str(tmp_path),
+            "SDLC_MANAGER_POLICY_PATHS": json.dumps(["knowledge/rules"]),
+            "SDLC_MANAGER_WORKFLOW_TEMPLATE_PATH": "knowledge/sdlc/default.yaml",
+        }
+    )
+
+    process = invoke_cli(database, event_payload("session_started"), environment=environment)
+
+    assert process.returncode == 0
+    assert result(process)["status"] == "PROCESSED"
 
 
 @pytest.mark.skipif(

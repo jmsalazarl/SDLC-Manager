@@ -40,6 +40,8 @@ La integración es opcional por proveedor. SDLC Manager debe continuar funcionan
 2. WHEN un proveedor tiene un contrato oficial verificable, THE Provider_Adapter SHALL documentar sus eventos, formato de entrada, formato de salida y límites de enforcement.
 3. IF un proveedor no tiene un contrato oficial verificable para una señal, THEN THE Integration_Installer SHALL marcar esa capacidad como `NOT_VERIFIED` o `UNSUPPORTED` y SHALL NOT simular una activación automática.
 4. WHEN el proveedor no está instalado, THE Sdlc_Manager SHALL continuar operando mediante MCP, CLI y procesamiento explícito de eventos.
+5. WHEN el usuario ejecuta `sdlc-manager init <proveedor>` en alcance de proyecto, THE Integration_Installer SHALL configurar de forma aditiva el MCP y las superficies automáticas verificables del proveedor.
+6. IF una configuración de proveedor contiene una entrada ajena con el mismo identificador administrado, THEN THE Integration_Installer SHALL rechazar la instalación sin sobrescribirla.
 
 ### Requirement 3: MCP e instrucciones persistentes
 
@@ -135,7 +137,7 @@ La integración es opcional por proveedor. SDLC Manager debe continuar funcionan
 | Proveedor | Capacidades oficiales verificables para esta spec | Estado inicial de diseño |
 |---|---|---|
 | Kiro | MCP local `stdio`; configuración de usuario/proyecto; hooks como `SessionStart`, `PreToolUse`, `PostToolUse`, `FileSave` y `Pre Task Execution` en superficies/versiones documentadas | `PARTIAL`: requiere validar versión instalada, stdin/stdout y propagación real |
-| Codex | MCP; `AGENTS.md`; plugins con MCP y hooks de ciclo de vida en plugins de escritorio instalados manualmente | `PARTIAL`: no se asume un contrato de hooks CLI estable; la ruta base es MCP y `AGENTS.md` |
+| Codex | MCP stdio en `.codex/config.toml`, hooks de proyecto y recursos propios instalados por proveedor | `PARTIAL`: requiere validar versión, confianza del proyecto, eventos y propagación real |
 | OpenCode | MCP; plugins locales o publicados; API de hooks de plugin y configuración `opencode.json(c)` | `PARTIAL`: requiere fijar versión y probar eventos, salida visible y enforcement |
 | Claude Code | MCP local `stdio`; hooks con eventos documentados, JSON de salida, `PreToolUse` y códigos de salida; `FileChanged` es informativo y no bloquea | `PARTIAL`: validar versiones y ejecución real del cliente |
 

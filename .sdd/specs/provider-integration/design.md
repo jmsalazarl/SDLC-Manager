@@ -87,7 +87,7 @@ Los adaptadores no inventarán eventos para señales que el proveedor no exponga
 | Proveedor | Conectividad | Eventos automáticos candidatos | Enforcement | Diseño inicial |
 |---|---|---|---|---|
 | Kiro | MCP local y configuración JSON de usuario/proyecto | `SessionStart`, `PreToolUse`, `PostToolUse`, `FileSave`, `Pre Task Execution` según superficie | `PreToolUse` documenta validación/bloqueo; otros eventos dependen de salida | Adaptador JSON y hook de comando; probar versión instalada |
-| Codex | MCP y `AGENTS.md`; plugin con MCP/hooks en escritorio instalado manualmente | Sesión o herramientas solo donde el contrato del plugin esté disponible | No asumir enforcement en CLI sin contrato verificable | MCP + instrucciones como ruta base; plugin separado y marcado `PARTIAL` |
+| Codex | Plugin local registrado en `.agents/plugins/marketplace.json`, habilitado en `.codex/config.toml`, con MCP y hooks empaquetados | `SessionStart`, `UserPromptSubmit`, `PostToolUse` | No asumir enforcement en CLI sin contrato verificable | `sdlc-manager init codex` como bootstrap aditivo; `integrations` como API detallada |
 | OpenCode | MCP y plugins locales/publicados | Hooks de plugin de sesión/prompt y eventos expuestos por la versión | Depende de la API de plugin y del punto de hook | Plugin observacional, sin afirmar bloqueo hasta prueba real |
 | Claude Code | MCP local `stdio`; hooks con stdin/stdout JSON | `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `FileChanged`, `TaskCompleted` y otros documentados | `PreToolUse` permite decisión; `FileChanged` no bloquea | Adaptador vertical inicial; salida JSON limpia y decisión explícita |
 
@@ -140,6 +140,14 @@ Se reutiliza `SdlcEventProcessor` porque ya concentra normalización, idempotenc
 ### CLI como frontera para hooks
 
 Los hooks y scripts usan el CLI porque evita iniciar una sesión MCP y permite conservar códigos de salida. MCP permanece como interfaz de consulta y ejecución interactiva.
+
+Los comandos de eventos se ejecutan con `uv --project` durante el desarrollo y
+con el ejecutable `sdlc-manager` cuando el wheel esta instalado. Esto conserva
+el directorio de trabajo del proyecto del cliente para que los adaptadores
+puedan resolver `.sdlc-manager/config.json` sin depender de una variable de
+entorno global. En Codex, el payload real de `PostToolUse` puede transportar
+cambios mediante `tool_input.command`; el adaptador solo extrae las marcas
+estructuradas de `apply_patch` y no ejecuta ni interpreta shell arbitrario.
 
 ### Evidencia pendiente por defecto
 

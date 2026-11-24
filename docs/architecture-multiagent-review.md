@@ -1,5 +1,11 @@
 # Auditoría Arquitectónica Para Integración Multiagente
 
+> Documento histórico de la revisión inicial. El estado vigente y el mapa de
+> cumplimiento se encuentran en
+> [framework-architecture-audit.md](framework-architecture-audit.md). Las
+> afirmaciones de "NO IMPLEMENTADO" de este documento describen el punto de
+> partida anterior y no el estado actual.
+
 ## 1. Resumen ejecutivo
 
 **Estado:** auditoría de solo lectura. No se modificaron código fuente, modelos, migraciones ni configuraciones.

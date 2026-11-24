@@ -2,45 +2,44 @@ from __future__ import annotations
 
 # sdlc-manager-managed
 import json
-import os
-import subprocess
 import sys
 
 # El instalador reemplaza esta marca con la raiz de SDLC Manager.
 MANAGER_ROOT = "__SDLC_MANAGER_ROOT__"
+sys.path.insert(0, MANAGER_ROOT)
+
+from integrations.common.hook_runner import (  # noqa: E402
+    build_context_message,
+    run_native_event,
+)
+
+
+def format_codex_output(result: dict[str, object], hook_event_name: str) -> str:
+    context = build_context_message(result)
+    if context is None:
+        return "{}\n"
+    payload = {
+        "hookSpecificOutput": {
+            "hookEventName": hook_event_name,
+            "additionalContext": context[:10000],
+        }
+    }
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n"
 
 
 def main() -> int:
-    event_type = sys.argv[1] if len(sys.argv) > 1 else "session_started"
-    raw = sys.stdin.read(1024 * 1024 + 1)
-    if len(raw) > 1024 * 1024:
-        print("SDLC Manager: evento demasiado grande", file=sys.stderr)
-        return 2
-    try:
-        payload = json.loads(raw or "{}")
-    except json.JSONDecodeError:
-        print("SDLC Manager: evento invalido", file=sys.stderr)
-        return 2
-    if not isinstance(payload, dict):
-        print("SDLC Manager: evento invalido", file=sys.stderr)
-        return 2
-    payload["event_type"] = event_type
-    payload["source_client"] = "codex"
-    command = os.environ.get(
-        "SDLC_MANAGER_COMMAND",
-        f"uv --directory {MANAGER_ROOT} run --frozen sdlc-manager",
-    ).split()
-    result = subprocess.run(
-        [*command, "event", "process", "--stdin"],
-        input=json.dumps(payload),
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if result.stderr:
-        print(result.stderr, file=sys.stderr, end="")
-    print(result.stdout, end="")
-    return result.returncode
+    hook_event_name = "UserPromptSubmit"
+    if len(sys.argv) > 1 and sys.argv[1] in {
+        "PostToolUse",
+        "SessionStart",
+        "UserPromptSubmit",
+    }:
+        hook_event_name = sys.argv[1]
+
+    def formatter(result: dict[str, object]) -> str:
+        return format_codex_output(result, hook_event_name)
+
+    return run_native_event("codex", formatter)
 
 
 if __name__ == "__main__":

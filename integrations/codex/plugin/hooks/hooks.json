@@ -6,7 +6,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/event.py session_started"
+            "command": "__SDLC_MANAGER_COMMAND__ hook codex --event SessionStart",
+            "statusMessage": "sdlc-manager-managed:codex",
+            "additionalContextLimit": 1200
           }
         ]
       }
@@ -16,17 +18,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/event.py session_started"
+            "command": "__SDLC_MANAGER_COMMAND__ hook codex --event UserPromptSubmit",
+            "statusMessage": "sdlc-manager-managed:codex",
+            "additionalContextLimit": 1200
           }
         ]
       }
     ],
-    "TaskCompleted": [
+    "PostToolUse": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${PLUGIN_ROOT}/hooks/event.py task_completed"
+            "command": "__SDLC_MANAGER_COMMAND__ hook codex --event PostToolUse",
+            "statusMessage": "sdlc-manager-managed:codex",
+            "additionalContextLimit": 1200
           }
         ]
       }

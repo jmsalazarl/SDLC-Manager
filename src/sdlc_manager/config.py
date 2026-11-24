@@ -23,12 +23,26 @@ class Settings(BaseSettings):
     auto_migrate: bool = True
     project_root: Path = Field(default_factory=lambda: Path.cwd())
 
+    @property
+    def resource_root(self) -> Path:
+        """Devuelve la raiz instalada que contiene migraciones y conocimiento."""
+        current = Path(__file__).resolve()
+        for parent in current.parents:
+            if (parent / "knowledge").is_dir() and (parent / "migrations").is_dir():
+                return parent
+        raise RuntimeError("no se encontraron los recursos de SDLC Manager")
+
     def resolved_policy_paths(self) -> list[Path]:
         return [self.resolve_path(item) for item in self.policy_paths]
 
     def resolve_path(self, value: str | Path) -> Path:
         path = Path(value)
-        return path if path.is_absolute() else self.project_root / path
+        if path.is_absolute():
+            return path
+        project_path = self.project_root / path
+        if project_path.exists():
+            return project_path
+        return self.resource_root / path
 
 
 @lru_cache

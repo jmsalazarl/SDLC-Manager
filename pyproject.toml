@@ -30,6 +30,13 @@ dev = [
 [project.scripts]
 sdlc-manager = "sdlc_manager.__main__:main"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/sdlc_manager", "integrations"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"knowledge" = "knowledge"
+"migrations" = "migrations"
+
 [tool.uv]
 default-groups = ["dev"]
 
@@ -58,7 +65,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 
 [tool.coverage.run]
-source = ["src"]
+source = ["src", "integrations"]
 branch = true
 relative_files = true
 

@@ -74,10 +74,18 @@ operaciones de memoria externa.
 `integrations/common/hook_runner.py` mantiene JSON en `stdout`, separa logs en
 `stderr`, limita stdin a 1 MiB y ejecuta el CLI sin shell concatenado.
 
-Claude Code usa además `hookSpecificOutput.additionalContext` mediante
+El procesador devuelve `recommendations` con mensajes acotados derivados de
+prácticas aprobadas y experiencias aprobadas. Esto evita que un adaptador solo
+transmita identificadores sin contenido útil.
+
+Claude Code usa `hookSpecificOutput.additionalContext` mediante
 `integrations/claude-code/hook_event.py`, que es el formato documentado para
-inyectar contexto junto al resultado de una herramienta. Kiro conserva la
-salida JSON del comando para que el hook pueda incorporarla a su contexto.
+inyectar contexto junto al resultado de una herramienta. Kiro usa la salida
+estandar del comando; el hook produce texto contextual, pero la visibilidad
+efectiva debe confirmarse en el cliente. El adaptador Kiro renderiza
+recomendaciones como texto y el asset instalado es JSON valido. Codex usa el
+mismo campo mediante hooks administrados por su plugin local. OpenCode usa el
+hook de contexto del plugin y conserva el resultado estructurado en metadata.
 
 ## Instalador seguro
 
@@ -90,6 +98,7 @@ sdlc-manager integrations plan kiro claude-code --project-root /ruta/al/proyecto
 sdlc-manager integrations install kiro claude-code --project-root /ruta/al/proyecto --project-id UUID_DEL_PROYECTO
 sdlc-manager integrations status --project-root /ruta/al/proyecto
 sdlc-manager integrations uninstall kiro claude-code --project-root /ruta/al/proyecto
+sdlc-manager init codex --project-root /ruta/al/proyecto --project-id UUID_DEL_PROYECTO
 ```
 
 El alcance predeterminado es `project`. Para planificar o instalar en el
@@ -106,7 +115,9 @@ El instalador:
 5. Ejecuta un preflight y restaura el estado anterior si una escritura falla.
 6. Retira solo entradas y archivos identificados como propios.
 7. Conserva configuraciones de terceros y no elimina la base SQLite.
-8. Trata `opencode.jsonc` como merge manual cuando no existe un
+8. Configura el MCP de Codex en alcance de proyecto sin modificar el perfil
+   global del usuario.
+9. Trata `opencode.jsonc` como merge manual cuando no existe un
    `opencode.json`, porque no se preservan comentarios con `json.loads`.
 
 El estado operativo y los backups se guardan bajo `.sdlc-manager/`, que es un
@@ -117,15 +128,16 @@ secretos en los assets de integración.
 
 | Proveedor | Superficie instalada | Activación | Propagación contextual | Estado real |
 |---|---|---|---|---|
-| Kiro | MCP y hook `PostFileSave` | Comando del hook | stdout del comando | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
+| Kiro | MCP y hooks `PostFileSave` y `PromptSubmit` | Comando de los hooks | stdout del comando; reconocimiento por la respuesta final no confirmado | PARTIAL; evento real, hook, procesador y experiencia comprobados, visibilidad efectiva en la respuesta del agente no confirmada |
 | Claude Code | MCP, `PostToolUse` y bloque `CLAUDE.md` | Hook de comando | `hookSpecificOutput.additionalContext` | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
-| OpenCode | MCP y plugin local | Plugin `execute.after` | metadata del resultado de herramienta | IMPLEMENTADO; sintaxis no ejecutada en cliente real |
-| Codex | Paquete de plugin, MCP, skill y hooks revisables | Depende de activar y confiar el plugin | depende del runtime del plugin | IMPLEMENTADO como paquete; NO VERIFICADO en cliente real |
+| OpenCode | MCP y plugin local | Inicio de sesion y `execute.after` | Hook de contexto del plugin y `metadata.sdlcManager` | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
+| Codex | Marketplace local, plugin de proyecto y hooks empaquetados | `SessionStart`, `UserPromptSubmit` y `PostToolUse` | `hookSpecificOutput.additionalContext` | PARTIAL; la sesión creó `index.html`, pero el CLI no cargó el plugin local automáticamente en esta prueba |
 
 La configuración MCP por sí sola no activa una consulta automática. Kiro y
 Claude Code disponen de hooks documentados; OpenCode dispone de plugins y
-hooks de servidor; el paquete Codex se entrega para revisión explícita y no
-se registra silenciosamente en un perfil global.
+hooks de servidor; Codex usa hooks de proyecto y requiere confianza explícita
+cuando el cliente la solicita. El instalador no registra plugins ni modifica
+perfiles globales.
 
 ## Instalación nativa
 
@@ -197,23 +209,31 @@ llamadas entre ambos productos.
 
 | Validación | Resultado |
 |---|---|
-| `uv run pytest -q` | 73 passed, 1 skipped, 28 warnings |
-| Pruebas de companion e integraciones | 16 passed, 1 warning |
-| `uv run ruff check .` | PASS |
-| `uv run ruff format --check .` | PASS |
-| `uv run mypy src integrations` | PASS, 52 archivos |
+| `uv run pytest -q` | 102 passed, 1 skipped, 38 warnings |
+| Pruebas de companion, eventos e integraciones | 47 passed, 1 skipped, 3 warnings |
+| `.venv/bin/ruff check .` | PASS |
+| `.venv/bin/ruff format --check .` | PASS, 156 archivos |
+| `uv run mypy src` | PASS, 43 archivos |
+| `git diff --check` | PASS |
+| Parseo JSON/TOML de assets de integración | PASS |
 | Instalación y desinstalación de los cuatro proveedores en filesystem temporal | PASS |
-| Prueba de stdout visible del hook Claude con proceso falso | PASS |
-| `docker build -t sdlc-manager:latest .` | PASS |
-| Persistencia CLI en Docker con volumen temporal | PASS, 1 prueba |
+| Hook Kiro instalado con salida contextual y `uv --frozen` en filesystem temporal | PASS |
+| Adaptador OpenCode con payload nativo y proceso falso | PASS |
+| `opencode debug config` en proyecto temporal | PASS, código 0 |
+| Codex CLI con proyecto y SQLite temporales | PARTIAL; sesión real ejecutada y `index.html` creado |
+| Hook Codex administrado con payload `PostToolUse` | PASS; recomendación emitida como `additionalContext` |
+| Propagación al contexto visible de Codex | NOT VERIFIED; la respuesta final indicó que no recibió contexto |
+| `docker build -t sdlc-manager:latest .` | NO REPETIDO después de estos cambios |
+| Persistencia CLI en Docker con volumen temporal | Validación previa; no repetida en esta iteración |
 | `sddnxp validate . --json` | PASS, `valid: true`, sin issues |
-| OpenCode 1.19.0 con configuración temporal | PASS parcial, `opencode debug config` terminó con código 0 |
-| Kiro CLI 1.0.242 con configuración temporal | NO VERIFICADO, el cliente requirió autenticación |
-| Cliente Kiro, Codex, OpenCode y Claude Code real | NO VERIFICADO |
+| `codex mcp get sdlc-manager` | PASS, servidor stdio habilitado |
+| Kiro CLI 3.5.0 | PARTIAL; sesión real creó el HTML, el hook `PostFileSave` terminó correctamente y la base persistió `WARN` con la recomendación. La respuesta final indicó que no recibió contexto |
+| OpenCode 1.19.0 en sesión real | PARTIAL; sesión real creó el HTML y el plugin persistió `WARN` con la recomendación, pero la respuesta final indicó que no recibió contexto |
+| Claude Code 2.1.328 en sesión real | PARTIAL; el intento real fue bloqueado por `Not logged in`; el wrapper directo sí fue probado |
 
-El comando Docker y la validación SDD se ejecutan como parte del cierre de esta
-fase cuando las herramientas están disponibles. La matriz anterior no declara
-validación de cliente real basada únicamente en mocks.
+La matriz anterior distingue las pruebas del núcleo, los mocks de adaptadores y
+la validación de configuración. Ningún mock se presenta como ejecución real de
+un cliente.
 
 ## Referencias oficiales
 

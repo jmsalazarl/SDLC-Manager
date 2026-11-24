@@ -6,7 +6,7 @@ Se implementará una integración vertical reutilizando el CLI, MCP, `SdlcEventP
 
 ## Tasks
 
-- [ ] 1. Confirmar contratos y versiones soportadas
+- [x] 1. Confirmar contratos y versiones soportadas
   - Registrar las versiones instaladas o marcar el proveedor como `NOT_TESTED` cuando no esté disponible.
   - Verificar contra documentación oficial el schema de entrada, salida, timeout y enforcement de cada superficie.
   - _Requerimiento: Requirement 2, Requirement 10_
@@ -20,9 +20,9 @@ Se implementará una integración vertical reutilizando el CLI, MCP, `SdlcEventP
   - _Capa: Aplicación / CI_
   - _Depende de: 1_
 
-- [ ] 3. Implementar el adaptador vertical del proveedor inicial
-  - Seleccionar la superficie oficial con salida visible y enforcement documentado.
-  - Traducir eventos al CLI y renderizar `PASS`, `WARN`, `BLOCK`, errores y estados no verificables.
+- [x] 3. Implementar el adaptador vertical del proveedor inicial
+  - Seleccionar hooks de proyecto de Codex con salida contextual documentada.
+  - Traducir eventos al CLI y renderizar recomendaciones, `PASS`, `WARN`, `BLOCK`, errores y estados no verificables.
   - _Requerimiento: Requirement 1, Requirement 3, Requirement 6_
   - _Capa: Integración_
   - _Depende de: 1, 2_
@@ -34,14 +34,15 @@ Se implementará una integración vertical reutilizando el CLI, MCP, `SdlcEventP
   - _Capa: Aplicación / Persistencia_
   - _Depende de: 2, 3_
 
-- [ ] 5. Extender configuraciones de Kiro, Codex, OpenCode y Claude Code
+- [x] 5. Extender configuraciones de Kiro, Codex, OpenCode y Claude Code
   - Mantener MCP, instrucciones y recursos con namespace propio.
+  - Configurar MCP y hooks de Codex en alcance de proyecto mediante `sdlc-manager init codex`, preservando el perfil global.
   - Implementar solamente eventos oficiales verificables y marcar las capacidades restantes.
   - _Requerimiento: Requirement 2, Requirement 3, Requirement 4, Requirement 9_
   - _Capa: Integración_
   - _Depende de: 3, 4_
 
-- [ ] 6. Reforzar instalación, actualización, rollback y retiro selectivo
+- [x] 6. Reforzar instalación, actualización, rollback y retiro selectivo
   - Probar plan, backup, merge, conflicto, escritura atómica e idempotencia en directorios temporales.
   - Preservar configuraciones ajenas y la base SQLite.
   - _Requerimiento: Requirement 7, Requirement 9_
@@ -68,6 +69,8 @@ Se implementará una integración vertical reutilizando el CLI, MCP, `SdlcEventP
 - No se ejecutan aprobaciones, transiciones ni cambios de archivos SDDNXP automáticamente.
 - Las integraciones siguen siendo opcionales y no cargan experiencias, proyectos o evidencias ficticias.
 - Los clientes no instalados se reportan como `NOT_TESTED`; los mocks no se presentan como validación real.
+- La instalación soporta checkout y wheel: usa `uv --project` en desarrollo y `sdlc-manager` cuando el paquete esta instalado.
+- El estado global de la integración permanece `PARTIAL` hasta completar pruebas E2E de visibilidad en cada cliente.
 - Todo cambio de esquema requiere una migración Alembic aditiva y pruebas de actualización.
 
 ## Task Dependency Graph
