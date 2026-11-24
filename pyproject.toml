@@ -7,10 +7,10 @@ requires-python = ">=3.12"
 dependencies = [
     "alembic==1.20.1",
     "mcp==2.3.0",
-    "pydantic==2.14.3",
+    "pydantic==2.14.4",
     "pydantic-settings==2.16.3",
-    "pyyaml==6.0.3",
-    "sqlalchemy==2.1.8",
+    "pyyaml==6.0.4",
+    "sqlalchemy==2.1.9",
 ]
 
 [build-system]
@@ -23,7 +23,7 @@ dev = [
     "pytest==8.3.4",
     "pytest-asyncio==0.25.3",
     "pytest-cov==7.1.0",
-    "ruff==0.17.5",
+    "ruff==0.17.6",
     "types-PyYAML==6.0.12.20250915",
 ]
 
