@@ -30,6 +30,16 @@ def load_codex_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     return module
 
 
+def load_claude_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
+    path = ROOT / "integrations" / "claude-code" / "hook_event.py"
+    spec = importlib.util.spec_from_file_location("claude_event_under_test", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def test_build_context_message_uses_recommendations_and_decision() -> None:
     result = {"recommendations": ["Revisar diseno", 5], "decision": "WARN"}
 
@@ -48,6 +58,37 @@ def test_build_context_message_falls_back_to_explanation() -> None:
 def test_build_context_message_returns_none_without_messages() -> None:
     assert build_context_message({"decision": "ALLOW", "recommendations": []}) is None
     assert build_context_message({"decision": "WARN", "explanation": 3}) is None
+
+
+def test_normalize_reads_project_id_from_payload_project_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("SDLC_MANAGER_PROJECT_ID", raising=False)
+    config = tmp_path / ".sdlc-manager" / "config.json"
+    config.parent.mkdir()
+    config.write_text('{"project_id":"00e57f27-4f4c-47d0-be96-84f1b7162a99"}\n', encoding="utf-8")
+
+    event = normalize_native_event(
+        {"type": "file_changed", "path": "src/a.py", "project_root": str(tmp_path)},
+        "codex",
+    )
+
+    assert event["project_id"] == "00e57f27-4f4c-47d0-be96-84f1b7162a99"
+
+
+def test_claude_formatter_exposes_recommendation_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = load_claude_module(monkeypatch)
+    output = json.loads(
+        module.format_claude_output(
+            {"recommendations": ["Revisar pagos"], "decision": "WARN"}, "PostToolUse"
+        )
+    )
+
+    assert output["hookSpecificOutput"]["additionalContext"] == (
+        "SDLC Manager:\n- Revisar pagos\nDecision: WARN."
+    )
 
 
 def test_kiro_formatters() -> None:

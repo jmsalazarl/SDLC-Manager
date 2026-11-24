@@ -4,48 +4,62 @@
 
 - MCP stdio: **IMPLEMENTADO**.
 - Instrucciones persistentes: **IMPLEMENTADO** mediante plantilla `AGENTS.md`.
-- Hooks de proyecto para `SessionStart`, `UserPromptSubmit` y `PostToolUse`:
-  **IMPLEMENTADO**.
+- Plugin local con hooks administrados para `SessionStart`, `UserPromptSubmit` y
+  `PostToolUse`: **IMPLEMENTADO**.
 - Propagación de recomendaciones mediante `hookSpecificOutput.additionalContext`:
   **PROBADO CON MOCK**.
-- Cliente Codex real: **VALIDADO EN CLIENTE REAL** en un proyecto temporal con
-  Codex CLI 0.171.0.
+- Cliente Codex real: **PARTIAL**. La sesión real creó `index.html`, pero no
+  mostró contexto de SDLC Manager porque el plugin local no quedó instalado en
+  el runtime de esta versión del CLI.
 - Enforcement: **NO IMPLEMENTADO**; los hooks son informativos y no bloquean.
 
-## Instalación MCP
+## Instalación automática
 
-La configuración de ejemplo está en `mcp.config.example.toml`. Para una
-instalación interactiva, revisar la sintaxis soportada por la versión instalada
-y agregar un servidor local equivalente a:
-
-```bash
-codex mcp add sdlc-manager -- uv --directory /ruta/al/SDLC-Manager run --frozen sdlc-manager
-```
-
-La configuración MCP permanece en el alcance elegido por el usuario. El
-instalador de integraciones no modifica el perfil global.
-
-El instalador opcional por proyecto agrega un paquete propio bajo
-`.sdlc-manager/` y hooks aditivos en `.codex/hooks.json`. Conserva los hooks y
-archivos existentes:
+La instalación recomendada registra un plugin local de Codex en alcance de
+proyecto en una sola operación:
 
 ```bash
-uv run sdlc-manager integrations plan codex \
-  --project-root /ruta/al/proyecto
-
-uv run sdlc-manager integrations install codex \
+sdlc-manager init codex \
   --project-root /ruta/al/proyecto \
   --project-id UUID_DEL_PROYECTO
 ```
 
-Antes de `install`, se debe revisar el JSON devuelto por `plan`. Codex puede
-requerir que el usuario confíe explícitamente los hooks del proyecto. La
-retirada selectiva es:
+El comando agrega de forma idempotente:
+
+- `.agents/plugins/marketplace.json` con la fuente local del plugin.
+- `.codex/config.toml` con el plugin `sdlc-manager@sdlc-manager-local` habilitado.
+- `.sdlc-manager/providers/codex-plugin/` con el adaptador administrado.
+
+El alcance de proyecto evita modificar `~/.codex/config.toml`. El proyecto debe
+ser confiable para que Codex permita cargar la configuracion y los hooks del
+plugin local. El plugin contiene su propio `plugin.json`, servidor MCP, skill y
+hooks, por lo que no depende de `.codex/hooks.json`.
+Para revisar antes de modificar archivos:
+
+```bash
+uv run sdlc-manager integrations plan codex \
+  --project-root /ruta/al/proyecto \
+  --project-id UUID_DEL_PROYECTO
+```
+
+Para retirar únicamente los recursos propios:
 
 ```bash
 uv run sdlc-manager integrations uninstall codex \
   --project-root /ruta/al/proyecto
 ```
+
+## Instalación MCP manual
+
+La configuración de ejemplo está en `mcp.config.example.toml`. Si se requiere
+registrar el servidor fuera de un proyecto administrado por el instalador:
+
+```bash
+codex mcp add sdlc-manager -- uv --project /ruta/al/SDLC-Manager run --frozen sdlc-manager
+```
+
+Antes de `install`, se debe revisar el JSON devuelto por `plan`. Codex puede
+requerir confianza explícita del proyecto y habilitación del plugin local.
 
 La instalación no agrega experiencias, proyectos ficticios ni evidencias. El
 contenido de `AGENTS.md` se entrega como referencia en
@@ -70,8 +84,8 @@ operación. Los errores mantienen un código de salida distinto de PASS y no se
 convierten en éxito.
 
 El paquete bajo `integrations/codex/plugin/` es un recurso distribuible
-opcional. La instalación por proyecto no registra plugins en el perfil global:
-instala recursos propios bajo `.sdlc-manager/` y agrega hooks al nivel del
+opcional. La instalación por proyecto no modifica el perfil global: instala el
+plugin bajo `.sdlc-manager/` y registra únicamente su marketplace local en el
 proyecto.
 
 ## Referencias oficiales

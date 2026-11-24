@@ -81,10 +81,11 @@ transmita identificadores sin contenido útil.
 Claude Code usa `hookSpecificOutput.additionalContext` mediante
 `integrations/claude-code/hook_event.py`, que es el formato documentado para
 inyectar contexto junto al resultado de una herramienta. Kiro usa la salida
-estandar del comando; cuando termina con codigo 0, Kiro la agrega al contexto
-del agente. El adaptador Kiro ahora renderiza recomendaciones como texto y el
-asset instalado es JSON valido.
-Codex usa el mismo campo mediante hooks de proyecto en `.codex/hooks.json`.
+estandar del comando; el hook produce texto contextual, pero la visibilidad
+efectiva debe confirmarse en el cliente. El adaptador Kiro renderiza
+recomendaciones como texto y el asset instalado es JSON valido. Codex usa el
+mismo campo mediante hooks administrados por su plugin local. OpenCode usa el
+hook de contexto del plugin y conserva el resultado estructurado en metadata.
 
 ## Instalador seguro
 
@@ -97,6 +98,7 @@ sdlc-manager integrations plan kiro claude-code --project-root /ruta/al/proyecto
 sdlc-manager integrations install kiro claude-code --project-root /ruta/al/proyecto --project-id UUID_DEL_PROYECTO
 sdlc-manager integrations status --project-root /ruta/al/proyecto
 sdlc-manager integrations uninstall kiro claude-code --project-root /ruta/al/proyecto
+sdlc-manager init codex --project-root /ruta/al/proyecto --project-id UUID_DEL_PROYECTO
 ```
 
 El alcance predeterminado es `project`. Para planificar o instalar en el
@@ -113,7 +115,9 @@ El instalador:
 5. Ejecuta un preflight y restaura el estado anterior si una escritura falla.
 6. Retira solo entradas y archivos identificados como propios.
 7. Conserva configuraciones de terceros y no elimina la base SQLite.
-8. Trata `opencode.jsonc` como merge manual cuando no existe un
+8. Configura el MCP de Codex en alcance de proyecto sin modificar el perfil
+   global del usuario.
+9. Trata `opencode.jsonc` como merge manual cuando no existe un
    `opencode.json`, porque no se preservan comentarios con `json.loads`.
 
 El estado operativo y los backups se guardan bajo `.sdlc-manager/`, que es un
@@ -124,10 +128,10 @@ secretos en los assets de integración.
 
 | Proveedor | Superficie instalada | Activación | Propagación contextual | Estado real |
 |---|---|---|---|---|
-| Kiro | MCP y hook `PostFileSave` | Comando del hook | stdout del comando producido y aceptado con código 0; reconocimiento por la respuesta final no confirmado | PARTIAL; evento real, hook, procesador y experiencia comprobados, visibilidad efectiva en la respuesta del agente no confirmada |
+| Kiro | MCP y hooks `PostFileSave` y `PromptSubmit` | Comando de los hooks | stdout del comando; reconocimiento por la respuesta final no confirmado | PARTIAL; evento real, hook, procesador y experiencia comprobados, visibilidad efectiva en la respuesta del agente no confirmada |
 | Claude Code | MCP, `PostToolUse` y bloque `CLAUDE.md` | Hook de comando | `hookSpecificOutput.additionalContext` | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
-| OpenCode | MCP y plugin local | Plugin `execute.after` | `metadata.sdlcManager` del resultado de herramienta | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
-| Codex | MCP, skill, paquete opcional y hooks de proyecto | `SessionStart`, `UserPromptSubmit` y `PostToolUse` | `hookSpecificOutput.additionalContext` | VALIDADO EN CLIENTE REAL en proyecto temporal; sin enforcement |
+| OpenCode | MCP y plugin local | Inicio de sesion y `execute.after` | Hook de contexto del plugin y `metadata.sdlcManager` | IMPLEMENTADO; PROBADO CON MOCK; NO VERIFICADO en cliente real |
+| Codex | Marketplace local, plugin de proyecto y hooks empaquetados | `SessionStart`, `UserPromptSubmit` y `PostToolUse` | `hookSpecificOutput.additionalContext` | PARTIAL; la sesión creó `index.html`, pero el CLI no cargó el plugin local automáticamente en esta prueba |
 
 La configuración MCP por sí sola no activa una consulta automática. Kiro y
 Claude Code disponen de hooks documentados; OpenCode dispone de plugins y
@@ -205,27 +209,27 @@ llamadas entre ambos productos.
 
 | Validación | Resultado |
 |---|---|
-| `.venv/bin/pytest -q` | 76 passed, 1 skipped, 8 warnings |
-| Pruebas de companion, eventos e integraciones | 29 passed |
+| `uv run pytest -q` | 102 passed, 1 skipped, 38 warnings |
+| Pruebas de companion, eventos e integraciones | 47 passed, 1 skipped, 3 warnings |
 | `.venv/bin/ruff check .` | PASS |
 | `.venv/bin/ruff format --check .` | PASS, 156 archivos |
-| `.venv/bin/mypy src integrations` | PASS, 54 archivos |
+| `uv run mypy src` | PASS, 43 archivos |
 | `git diff --check` | PASS |
 | Parseo JSON/TOML de assets de integración | PASS |
 | Instalación y desinstalación de los cuatro proveedores en filesystem temporal | PASS |
 | Hook Kiro instalado con salida contextual y `uv --frozen` en filesystem temporal | PASS |
 | Adaptador OpenCode con payload nativo y proceso falso | PASS |
 | `opencode debug config` en proyecto temporal | PASS, código 0 |
-| Codex CLI 0.171.0 con proyecto y SQLite temporales | PASS; sesión real ejecutada con hooks de proyecto |
-| Payload real de Codex `apply_patch` y recuperación contextual | PASS; experiencia `payments` recuperada |
-| Propagación al contexto visible de Codex | PASS; el agente confirmó la recomendación en su respuesta |
+| Codex CLI con proyecto y SQLite temporales | PARTIAL; sesión real ejecutada y `index.html` creado |
+| Hook Codex administrado con payload `PostToolUse` | PASS; recomendación emitida como `additionalContext` |
+| Propagación al contexto visible de Codex | NOT VERIFIED; la respuesta final indicó que no recibió contexto |
 | `docker build -t sdlc-manager:latest .` | NO REPETIDO después de estos cambios |
 | Persistencia CLI en Docker con volumen temporal | Validación previa; no repetida en esta iteración |
 | `sddnxp validate . --json` | PASS, `valid: true`, sin issues |
 | `codex mcp get sdlc-manager` | PASS, servidor stdio habilitado |
-| Kiro CLI 3.5.0 | PARTIAL; sesión autenticada real y `PostFileSave` observados. El hook recibió el payload real, recuperó la experiencia `payments`, emitió la recomendación por stdout y terminó con código 0. La respuesta final de Kiro indicó que no recibió contexto; la visibilidad efectiva en el contexto del agente queda sin confirmar |
-| OpenCode 1.19.0 en sesión real | NO VERIFICADO; solo se verificó configuración temporal |
-| Claude Code 2.1.328 en sesión real | NO VERIFICADO por ausencia de licencia de esta fase |
+| Kiro CLI 3.5.0 | PARTIAL; sesión real creó el HTML, el hook `PostFileSave` terminó correctamente y la base persistió `WARN` con la recomendación. La respuesta final indicó que no recibió contexto |
+| OpenCode 1.19.0 en sesión real | PARTIAL; sesión real creó el HTML y el plugin persistió `WARN` con la recomendación, pero la respuesta final indicó que no recibió contexto |
+| Claude Code 2.1.328 en sesión real | PARTIAL; el intento real fue bloqueado por `Not logged in`; el wrapper directo sí fue probado |
 
 La matriz anterior distingue las pruebas del núcleo, los mocks de adaptadores y
 la validación de configuración. Ningún mock se presenta como ejecución real de

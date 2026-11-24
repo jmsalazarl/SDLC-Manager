@@ -44,8 +44,9 @@ def test_kiro_hook_is_disabled_and_non_blocking_by_default() -> None:
     assert hook["hooks"][0]["trigger"] == "PostFileSave"
     assert hook["hooks"][0]["enabled"] is False
     assert installed["hooks"][0]["enabled"] is True
-    assert "--project" in installed["hooks"][0]["action"]["command"]
-    assert "--frozen" in installed["hooks"][0]["action"]["command"]
+    assert "html" in installed["hooks"][0]["matcher"]
+    assert "hook kiro" in installed["hooks"][0]["action"]["command"]
+    assert "__SDLC_MANAGER_COMMAND__" in installed["hooks"][0]["action"]["command"]
 
 
 def test_normalized_event_preserves_stable_event_id() -> None:

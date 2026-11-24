@@ -26,7 +26,11 @@ class Settings(BaseSettings):
     @property
     def resource_root(self) -> Path:
         """Devuelve la raiz instalada que contiene migraciones y conocimiento."""
-        return Path(__file__).resolve().parents[2]
+        current = Path(__file__).resolve()
+        for parent in current.parents:
+            if (parent / "knowledge").is_dir() and (parent / "migrations").is_dir():
+                return parent
+        raise RuntimeError("no se encontraron los recursos de SDLC Manager")
 
     def resolved_policy_paths(self) -> list[Path]:
         return [self.resolve_path(item) for item in self.policy_paths]

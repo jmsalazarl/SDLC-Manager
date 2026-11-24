@@ -12,7 +12,14 @@ from typing import Any
 
 from .event_adapter import MAX_EVENT_BYTES
 
-MANAGER_ROOT = Path(__file__).resolve().parents[2]
+MANAGER_ROOT = next(
+    (
+        parent
+        for parent in Path(__file__).resolve().parents
+        if (parent / "pyproject.toml").is_file()
+    ),
+    None,
+)
 
 
 def run_normalized_event(
@@ -37,14 +44,18 @@ def run_normalized_event(
         command = (
             shlex.split(configured_command)
             if configured_command
-            else [
-                "uv",
-                "--directory",
-                str(MANAGER_ROOT),
-                "run",
-                "--frozen",
-                "sdlc-manager",
-            ]
+            else (
+                [
+                    "uv",
+                    "--directory",
+                    str(MANAGER_ROOT),
+                    "run",
+                    "--frozen",
+                    "sdlc-manager",
+                ]
+                if MANAGER_ROOT is not None
+                else ["sdlc-manager"]
+            )
         )
     except ValueError:
         return write_adapter_error("ADAPTER_COMMAND_ERROR", "SDLC_MANAGER_COMMAND no es valido")

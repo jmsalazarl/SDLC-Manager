@@ -31,8 +31,8 @@ uv run sdlc-manager integrations plan kiro
 uv run sdlc-manager integrations install kiro --project-id UUID_DEL_PROYECTO
 ```
 
-El instalador conserva `mcpServers` existentes y el hook instalado es
-informativo. Para retirarlo:
+El instalador conserva `mcpServers` existentes y agrega hooks de `PostFileSave`
+y `PromptSubmit`. Ambos son informativos. Para retirarlos:
 
 ```bash
 uv run sdlc-manager integrations uninstall kiro
@@ -40,11 +40,12 @@ uv run sdlc-manager integrations uninstall kiro
 
 ## Hook instalado
 
-1. Definir `SDLC_MANAGER_PROJECT_ID` con un UUID del proyecto local.
+1. Crear o recuperar el proyecto local y usar su UUID en `--project-id`.
 2. Ejecutar `integrations plan` y revisar el cambio antes de instalarlo.
 3. Instalar la integración desde la raíz del proyecto destino.
-4. Verificar que el comando se ejecute desde la raíz del repositorio y que el
-   proyecto tenga `uv.lock` disponible para `--frozen`.
+4. Verificar que el comando instalado sea accesible desde el entorno del
+   proyecto. En un checkout el instalador usa `uv --project`; en un wheel usa
+   el ejecutable `sdlc-manager`.
 5. Confirmar el comportamiento en una sesión Kiro antes de considerarlo
    validado en cliente real.
 

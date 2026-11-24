@@ -5,10 +5,21 @@
       "name": "sdlc-manager-file-save",
       "description": "Consulta SDLC Manager y agrega el resultado al contexto; no bloquea. sdlc-manager-managed",
       "trigger": "PostFileSave",
-      "matcher": "\\.(py|yaml|yml|sql)$",
+      "matcher": "\\.(py|yaml|yml|sql|html|htm)$",
       "action": {
         "type": "command",
-        "command": "uv --project \"__SDLC_MANAGER_ROOT__\" run --frozen python \"__SDLC_MANAGER_ROOT__/integrations/kiro/kiro_event_adapter.py\""
+        "command": "__SDLC_MANAGER_COMMAND__ hook kiro"
+      },
+      "timeout": 60,
+      "enabled": true
+    },
+    {
+      "name": "sdlc-manager-prompt-submit",
+      "description": "Recupera contexto de SDLC Manager antes de enviar un prompt; no bloquea. sdlc-manager-managed",
+      "trigger": "PromptSubmit",
+      "action": {
+        "type": "command",
+        "command": "__SDLC_MANAGER_COMMAND__ hook kiro"
       },
       "timeout": 60,
       "enabled": true

@@ -9,6 +9,7 @@ from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 
 from sdlc_manager.config import Settings
+from sdlc_manager.domain.enums import KnowledgeScope, ReviewStatus
 from sdlc_manager.domain.models import Project
 from sdlc_manager.infrastructure.container import build_container
 from sdlc_manager.infrastructure.database.migrations import run_migrations
@@ -178,3 +179,43 @@ async def test_mcp_stdio_accepts_json_uuid_and_detects_generic_policy(
                 },
             )
             assert invalid_result.is_error is True
+
+
+@pytest.mark.asyncio
+async def test_mcp_practices_normalize_file_changed_event(tmp_path: Path) -> None:
+    root = Path(__file__).parents[2]
+    settings = Settings(
+        database_url=f"sqlite:///{tmp_path / 'practices.db'}",
+        policy_paths=[str(root / "knowledge" / "rules")],
+        project_root=root,
+    )
+    run_migrations(settings)
+    container = build_container(settings, initialize_schema=False)
+    project = container.service.create_project("MCP practice project")
+    practice = container.service.register_practice(
+        title="Validar campos de texto",
+        context="Cambios HTML",
+        triggers={"event": "file_change", "file_extensions": [".html"]},
+        intervention_message="Prevenir SQL injection",
+        severity="HIGH",
+        scope=KnowledgeScope.PROJECT,
+        project_id=project.id,
+    )
+    container.service.review_practice(practice.id, ReviewStatus.APPROVED, "reviewer")
+    server, _ = get_server_for_tests(settings)
+
+    async with Client(server) as client:
+        result = await client.call_tool(
+            "get_applicable_practices",
+            {
+                "input": {
+                    "event": "file_changed",
+                    "stage": "implementation",
+                    "changed_files": ["index.html"],
+                    "project_id": str(project.id),
+                }
+            },
+        )
+
+    assert result.is_error is False
+    assert [item["id"] for item in result.structured_content["practices"]] == [str(practice.id)]

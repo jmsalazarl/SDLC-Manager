@@ -48,7 +48,10 @@ def normalize_native_event(
     event_type = _event_type(payload, default_event_type)
     files = _files(payload)
     context = _context(payload)
-    project_id = _first_text(payload, "project_id", "projectId") or project_id_from_environment()
+    project_root = _first_text(payload, "project_root", "projectRoot", "cwd")
+    project_id = _first_text(payload, "project_id", "projectId") or project_id_from_environment(
+        project_root
+    )
     if not project_id:
         raise ValueError("SDLC_MANAGER_PROJECT_ID es obligatorio")
     identity = _first_text(
@@ -82,6 +85,8 @@ def _event_type(payload: Mapping[str, Any], default_event_type: str | None = Non
         "sessionstart": "session_started",
         "session_start": "session_started",
         "session.started": "session_started",
+        "promptsubmit": "session_started",
+        "prompt_submit": "session_started",
         "userpromptsubmit": "session_started",
         "filechanged": "file_changed",
         "postfilesave": "file_changed",

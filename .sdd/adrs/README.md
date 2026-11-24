@@ -8,4 +8,5 @@ Estas decisiones son la fuente de trazabilidad SDD para el MVP. Las versiones de
 - [ADR 0004 — Políticas deterministas](0004-politicas-deterministas.md)
 - [ADR 0005 — Docker local](0005-docker-local.md)
 - [ADR 0006 — Independencia de Kiro](0006-independencia-kiro.md)
+- [ADR 0012 — Bootstrap de integraciones por proveedor](0012-bootstrap-de-integraciones-por-proveedor.md)
 

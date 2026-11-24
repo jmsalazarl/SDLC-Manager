@@ -38,9 +38,9 @@ de demostración.
 | Cliente | Archivos principales | Estado |
 |---|---|---|
 | Kiro | `integrations/kiro/mcp.*`, `integrations/kiro/hooks/sdlc-file-save.*`, `integrations/kiro/kiro_event_adapter.py` | MCP y hook instalado **IMPLEMENTADO**; payload `PostFileSave` y salida contextual **VALIDADOS EN PRUEBA DE CONTRATO**; cliente real **PARTIAL** |
-| Codex | `integrations/codex/mcp.config.example.toml`, `AGENTS.sdlc-manager.md`, `process_event.py` | MCP, instrucciones y hooks **IMPLEMENTADO**; flujo E2E **VALIDADO EN CLIENTE REAL** en proyecto temporal |
-| OpenCode | `integrations/opencode/opencode.config.example.jsonc`, `plugin/index.ts`, `process_event.py` | MCP, plugin y wrapper **IMPLEMENTADO**; normalización nativa **PROBADA CON MOCK**; cliente real **NO VALIDADO EN CLIENTE REAL** |
-| Claude Code | `integrations/claude-code/.mcp.json.example`, `CLAUDE.md.example`, `process_event.py` | MCP e instrucciones **IMPLEMENTADO**; wrapper **PROBADO CON MOCK**; cliente real **NO VALIDADO EN CLIENTE REAL** |
+| Codex | `integrations/codex/plugin/`, `process_event.py` | Plugin, MCP y hooks **IMPLEMENTADOS**; sesión real creó el archivo de prueba, pero la carga automática del plugin y el contexto visible quedaron **PARTIAL** |
+| OpenCode | `integrations/opencode/opencode.config.example.jsonc`, `plugin/index.ts`, `process_event.py` | MCP, plugin y wrapper **IMPLEMENTADO**; sesión real y persistencia del evento **PROBADAS**, contexto visible **PARTIAL** |
+| Claude Code | `integrations/claude-code/.mcp.json.example`, `CLAUDE.md.example`, `process_event.py` | MCP e instrucciones **IMPLEMENTADO**; wrapper **PROBADO CON MOCK**; sesión real bloqueada por autenticación |
 
 La guía común está en `integrations/common/sdlc-manager-instructions.md`.
 El contrato común de normalización y ejecución está en
@@ -62,7 +62,17 @@ Kiro documenta hooks de archivo, acciones de comando y MCP local en:
 ### Codex
 
 `integrations/codex/mcp.config.example.toml` usa un servidor local stdio.
-También se documenta el comando equivalente:
+La instalación automática recomendada configura el MCP y los hooks de proyecto:
+
+```bash
+sdlc-manager init codex \
+  --project-root /ruta/al/proyecto \
+  --project-id UUID_DEL_PROYECTO
+```
+
+Esto agrega `.agents/plugins/marketplace.json`, habilita el plugin local en
+`.codex/config.toml` y distribuye sus hooks junto al plugin bajo
+`.sdlc-manager/providers/codex-plugin/`. También se documenta el comando manual equivalente:
 
 ```bash
 codex mcp add sdlc-manager -- uv run --frozen sdlc-manager
@@ -79,7 +89,8 @@ existente. Las referencias utilizadas son [Codex MCP](https://developers.openai.
 `mcp.servers` con un servidor `local` y carga la guía común con `instructions`.
 El plugin local observa `execute.after`, envía el payload nativo a
 `integrations/opencode/process_event.py` y conserva la respuesta bajo
-`metadata.sdlcManager`. Las referencias son [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers),
+`session.hook("context")` para entregar texto al contexto y
+`metadata.sdlcManager` para conservar el resultado estructurado. Las referencias son [OpenCode MCP servers](https://opencode.ai/docs/mcp-servers),
 [OpenCode instructions](https://opencode.ai/docs/instructions/) y
 [OpenCode server plugins](https://opencode.ai/docs/build/plugins/server).
 
@@ -156,31 +167,31 @@ Se agregaron `tests/integration/test_multiagent_integrations.py` con:
 - stdout JSON limpio, stderr separado y preservación del código de salida.
 - Sobrescritura controlada de `source_client` por el wrapper de transporte.
 
-Resultados reales de esta fase:
+Resultados automatizados y E2E de esta fase:
 
 | Comando | Resultado |
 |---|---|
-| `.venv/bin/pytest -q` | `76 passed`, `1 skipped`, `8 warnings` |
+| Pruebas dirigidas después de la corrección Codex/MCP | `38 passed`, `1 skipped`, `41 warnings` |
 | `.venv/bin/pytest` en companion, eventos e integraciones | `29 passed` |
 | `.venv/bin/ruff check .` | Exitoso |
 | `.venv/bin/ruff format --check .` | Exitoso; `156 files already formatted` |
-| `.venv/bin/mypy src integrations` | Exitoso; sin errores en 54 archivos fuente |
+| `uv run mypy src` | Exitoso; sin errores en 43 archivos fuente |
 | `git diff --check` | Exitoso |
 | Parseo de assets JSON/TOML | Exitoso |
 | `sddnxp validate . --json` | Exitoso; `valid: true`, `issues: []` |
 | `docker build -t sdlc-manager:latest .` | Validación previa; no repetida en esta iteración |
 | `uv run alembic` con configuración y SQLite temporales | Exitoso en validación previa; no se ejecutó sobre la base local |
-| Codex CLI 0.171.0 con proyecto temporal | PASS; sesión real y hooks ejecutados |
-| Recuperación de experiencia `payments` desde `PostToolUse` | PASS; el resultado persistido incluyó recomendación contextual |
-| Contexto visible para el agente Codex | PASS; la respuesta final confirmó la recomendación recibida |
+| Codex CLI en proyecto temporal con plugin local | PARTIAL; creó `index.html`, pero la respuesta final indicó que no recibió contexto |
+| Hook Codex instalado ejecutado con payload `PostToolUse` | PASS; emitió `hookSpecificOutput.additionalContext` con la regla de SQL injection |
+| MCP `get_applicable_practices` con `file_changed` | PASS; normaliza el alias y devuelve la práctica aprobada |
 
 La validación en cliente real no forma parte de los resultados locales.
 
 ## 8. Funcionalidades no verificadas
 
-- Ejecución de una sesión autenticada contra Kiro, OpenCode y Claude Code.
-- Payload exacto de hooks de Kiro, OpenCode y Claude Code en las versiones
-  instaladas por el usuario.
+- Visibilidad del contexto en la respuesta final de Kiro y OpenCode.
+- Carga automática del plugin local de Codex en el CLI sin registrar un marketplace en el perfil del usuario.
+- Payload exacto de hooks en futuras versiones de los clientes.
 - Enforcement real de `BLOCK` en un flujo de edición o herramienta.
 - Compatibilidad de cada configuración con futuras versiones del cliente.
 - Concurrencia de varios hooks simultáneos sobre la misma SQLite.
@@ -233,7 +244,6 @@ contiene comandos `apply_patch`; el adaptador extrae únicamente las marcas
 deterministas `Update File`, `Add File` y `Delete File`, sin ejecutar comandos ni
 interpretar shell arbitrario.
 
-La primera integración vertical queda preparada para Kiro mediante MCP y un
-hook informativo de archivo. Las otras tres quedan preparadas para instalación
-MCP, consulta de memoria y ejecución CLI manual, sin afirmar automatización que
-no haya sido verificada.
+Las cuatro integraciones quedan preparadas para instalación MCP y activación
+automática mediante hooks o plugins. El estado global permanece PARTIAL hasta
+repetir la cadena completa en los clientes externos actuales.

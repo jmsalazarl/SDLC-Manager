@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import os
-import shlex
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -13,6 +13,7 @@ from integrations.common.hook_runner import normalize_native_event
 
 from sdlc_manager.domain.enums import ReviewStatus
 from sdlc_manager.infrastructure.integrations.installer import (
+    CODEX_PLUGIN_START,
     IntegrationError,
     IntegrationInstaller,
 )
@@ -199,7 +200,30 @@ def test_installer_is_additive_idempotent_and_selective(tmp_path: Path) -> None:
     assert final == {"mcpServers": {"other": {"command": "other"}}}
 
 
-def test_codex_installer_adds_project_hooks_and_formats_context(tmp_path: Path) -> None:
+def test_installer_bootstraps_all_provider_surfaces_in_a_project(tmp_path: Path) -> None:
+    (tmp_path / "opencode.json").write_text(
+        json.dumps({"mcp": {"servers": {"other": {"type": "local"}}}}), encoding="utf-8"
+    )
+    installer = IntegrationInstaller(tmp_path)
+
+    first = installer.install(["kiro", "codex", "opencode", "claude-code"], project_id=PROJECT_ID)
+    second = installer.install(["kiro", "codex", "opencode", "claude-code"], project_id=PROJECT_ID)
+
+    assert first["status"] == "installed"
+    assert second["status"] == "installed"
+    assert (tmp_path / ".kiro/settings/mcp.json").is_file()
+    assert (tmp_path / ".codex/config.toml").is_file()
+    assert (tmp_path / ".mcp.json").is_file()
+    assert (tmp_path / ".claude/settings.local.json").is_file()
+    assert (tmp_path / ".opencode/plugins/sdlc-manager/index.ts").is_file()
+    opencode = json.loads((tmp_path / "opencode.json").read_text(encoding="utf-8"))
+    assert opencode["mcp"]["servers"]["other"] == {"type": "local"}
+    assert opencode["mcp"]["servers"]["sdlc-manager"]["command"][0] == "uv"
+
+
+def test_codex_installer_registers_local_plugin_and_preserves_external_hooks(
+    tmp_path: Path,
+) -> None:
     hooks_path = tmp_path / ".codex" / "hooks.json"
     hooks_path.parent.mkdir(parents=True)
     hooks_path.write_text(
@@ -215,57 +239,40 @@ def test_codex_installer_adds_project_hooks_and_formats_context(tmp_path: Path) 
     installer = IntegrationInstaller(tmp_path)
     installer.install(["codex"], project_id=PROJECT_ID)
 
-    installed = json.loads(hooks_path.read_text(encoding="utf-8"))
-    assert len(installed["hooks"]["SessionStart"]) == 1
-    assert len(installed["hooks"]["PostToolUse"]) == 1
-    assert len(installed["hooks"]["UserPromptSubmit"]) == 2
+    codex_config = tmp_path / ".codex" / "config.toml"
+    configured = tomllib.loads(codex_config.read_text(encoding="utf-8"))
+    assert configured["plugins"]["sdlc-manager@sdlc-manager-local"] == {"enabled": True}
+    assert json.loads(hooks_path.read_text(encoding="utf-8")) == {
+        "hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "third-party"}]}]}
+    }
 
-    fake_cli = tmp_path / "fake_cli.py"
-    fake_cli.write_text(
-        "import json\n"
-        "print(json.dumps({'decision': 'WARN', 'recommendations': "
-        "['Revisar el riesgo del componente'], 'explanation': 'Contexto disponible'}))\n",
-        encoding="utf-8",
+    marketplace = json.loads(
+        (tmp_path / ".agents/plugins/marketplace.json").read_text(encoding="utf-8")
     )
-    command = installed["hooks"]["PostToolUse"][0]["hooks"][0]["command"]
-    assert "--project" in command
-    script_tokens = shlex.split(command.split(" PostToolUse", 1)[0])
-    script = script_tokens[script_tokens.index("python") + 1]
-    environment = os.environ.copy()
-    environment.update(
+    assert marketplace["name"] == "sdlc-manager-local"
+    assert marketplace["plugins"] == [
         {
-            "PYTHONPATH": str(ROOT),
-            "SDLC_MANAGER_COMMAND": f"{sys.executable} {fake_cli}",
+            "name": "sdlc-manager",
+            "source": {
+                "source": "local",
+                "path": "./.sdlc-manager/providers/codex-plugin",
+            },
+            "policy": {
+                "installation": "INSTALLED_BY_DEFAULT",
+                "authentication": "ON_INSTALL",
+            },
+            "category": "Productivity",
         }
-    )
-    process = subprocess.run(
-        [sys.executable, script, "PostToolUse"],
-        input=json.dumps(
-            {
-                "hook_event_name": "PostToolUse",
-                "cwd": str(tmp_path),
-                "tool_use_id": "tool-1",
-                "tool_input": {"file_path": "src/payments.py"},
-            }
-        ).encode(),
-        capture_output=True,
-        cwd=tmp_path,
-        env=environment,
-        check=False,
-    )
-
-    assert process.returncode == 0
-    output = json.loads(process.stdout)
-    assert output["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
-    assert "Revisar el riesgo del componente" in output["hookSpecificOutput"]["additionalContext"]
-    assert process.stderr == b""
+    ]
 
     installer.uninstall(["codex"])
+    assert not codex_config.exists()
     final = json.loads(hooks_path.read_text(encoding="utf-8"))
     assert final == {
         "hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "third-party"}]}]}
     }
     assert not (tmp_path / ".sdlc-manager" / "providers" / "codex-plugin").exists()
+    assert not (tmp_path / ".agents/plugins/marketplace.json").exists()
 
 
 def test_installer_rejects_opencode_jsonc_without_writing(tmp_path: Path) -> None:
@@ -314,18 +321,52 @@ def test_installer_cli_plan_writes_only_json_stdout(tmp_path: Path) -> None:
     assert process.stderr == b""
 
 
-def test_codex_installer_is_idempotent_and_rejects_invalid_hooks(tmp_path: Path) -> None:
-    hooks_path = tmp_path / ".codex" / "hooks.json"
+def test_codex_installer_is_idempotent_and_rejects_invalid_plugin_config(
+    tmp_path: Path,
+) -> None:
     installer = IntegrationInstaller(tmp_path)
     installer.install(["codex"], project_id=PROJECT_ID)
     installer.install(["codex"], project_id=PROJECT_ID)
-    installed = json.loads(hooks_path.read_text(encoding="utf-8"))
-    assert len(installed["hooks"]["SessionStart"]) == 1
+    marketplace = json.loads(
+        (tmp_path / ".agents/plugins/marketplace.json").read_text(encoding="utf-8")
+    )
+    assert len(marketplace["plugins"]) == 1
+    assert (tmp_path / ".codex/config.toml").read_text(encoding="utf-8").count(
+        CODEX_PLUGIN_START
+    ) == 1
 
     with pytest.raises(IntegrationError, match="hooks de Codex"):
         installer._merge_codex_hooks({"hooks": []})
     with pytest.raises(IntegrationError, match="hooks.SessionStart"):
         installer._merge_codex_hooks({"hooks": {"SessionStart": {}}})
+
+    with pytest.raises(IntegrationError, match="TOML"):
+        invalid_config = tmp_path / "invalid.toml"
+        invalid_config.write_text("[broken\n", encoding="utf-8")
+        installer._validate_codex_plugin_config(invalid_config)
+
+
+def test_codex_installer_preserves_external_mcp_and_rejects_conflicts(tmp_path: Path) -> None:
+    config = tmp_path / ".codex" / "config.toml"
+    config.parent.mkdir(parents=True)
+    original = '[mcp_servers.other]\ncommand = "other"\n'
+    config.write_text(original, encoding="utf-8")
+
+    installer = IntegrationInstaller(tmp_path)
+    installer.install(["codex"], project_id=PROJECT_ID)
+    installed = tomllib.loads(config.read_text(encoding="utf-8"))
+    assert installed["mcp_servers"]["other"]["command"] == "other"
+    assert installed["plugins"]["sdlc-manager@sdlc-manager-local"] == {"enabled": True}
+
+    installer.uninstall(["codex"])
+    assert config.read_text(encoding="utf-8") == original
+
+    config.write_text(
+        '[plugins."sdlc-manager@sdlc-manager-local"]\nenabled = false\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(IntegrationError, match="otra configuracion"):
+        installer.install(["codex"], project_id=PROJECT_ID)
 
 
 def test_remove_hooks_ignores_missing_or_unrelated_files(tmp_path: Path) -> None:

@@ -202,9 +202,10 @@ def _register_tools(server: MCPServer, container: ApplicationContainer) -> None:
     async def get_applicable_practices(input: ApplicablePracticesInput) -> dict[str, Any]:
         """Obtiene recomendaciones aprobadas para un contexto SDLC."""
         context = dict(input.context)
+        event = "file_change" if input.event == "file_changed" else input.event
         context.update(
             {
-                "event": input.event,
+                "event": event,
                 "stage": input.stage,
                 "changed_files": input.changed_files,
                 "component": input.component,

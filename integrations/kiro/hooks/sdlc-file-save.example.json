@@ -5,7 +5,7 @@
       "name": "sdlc-manager-file-save",
       "description": "Consulta SDLC Manager despues de guardar un archivo; no bloquea operaciones.",
       "trigger": "PostFileSave",
-      "matcher": "\\.(py|yaml|yml|sql)$",
+      "matcher": "\\.(py|yaml|yml|sql|html|htm)$",
       "action": {
         "type": "command",
         "command": "uv run python integrations/kiro/kiro_event_adapter.py"

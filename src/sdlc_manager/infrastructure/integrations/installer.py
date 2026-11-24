@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shlex
 import shutil
 import tempfile
+import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +15,11 @@ from typing import Any
 
 PROVIDERS = ("codex", "kiro", "opencode", "claude-code")
 MANAGED_MARKER = "sdlc-manager-managed"
+CODEX_MCP_START = "# sdlc-manager-managed:mcp:start"
+CODEX_MCP_END = "# sdlc-manager-managed:mcp:end"
+CODEX_PLUGIN_START = "# sdlc-manager-managed:plugin:start"
+CODEX_PLUGIN_END = "# sdlc-manager-managed:plugin:end"
+CODEX_MARKETPLACE_NAME = "sdlc-manager-local"
 
 
 class IntegrationError(ValueError):
@@ -34,7 +41,7 @@ class IntegrationInstaller:
         if scope not in {"project", "user"}:
             raise IntegrationError("scope debe ser project o user")
         self.project_root = project_root.expanduser().resolve()
-        self.manager_root = Path(__file__).resolve().parents[4]
+        self.manager_root = self._distribution_root()
         self.home = (home or Path.home()).expanduser().resolve()
         self.scope = IntegrationScope(scope, self.project_root if scope == "project" else self.home)
         self.state_root = (
@@ -43,6 +50,31 @@ class IntegrationInstaller:
             else self.home / ".config" / "sdlc-manager"
         )
         self.backup_root = self.state_root / "backups" / "integrations"
+
+    @staticmethod
+    def _distribution_root() -> Path:
+        """Encuentra la raiz de recursos tanto en checkout como en wheel."""
+        current = Path(__file__).resolve()
+        for parent in current.parents:
+            if (parent / "integrations").is_dir() and (parent / "knowledge").is_dir():
+                return parent
+        raise IntegrationError("no se encontraron los recursos instalables de SDLC Manager")
+
+    def _runtime_command(self) -> list[str]:
+        """Devuelve el lanzador portable del runtime instalado."""
+        if (self.manager_root / "pyproject.toml").is_file():
+            return [
+                "uv",
+                "--project",
+                str(self.manager_root),
+                "run",
+                "--frozen",
+                "sdlc-manager",
+            ]
+        return ["sdlc-manager"]
+
+    def _runtime_command_shell(self) -> str:
+        return shlex.join(self._runtime_command())
 
     def list_status(self) -> dict[str, Any]:
         return {
@@ -60,7 +92,12 @@ class IntegrationInstaller:
             "providers": [self._plan_provider(provider) for provider in selected],
         }
 
-    def install(self, providers: list[str], project_id: str | None = None) -> dict[str, Any]:
+    def install(
+        self,
+        providers: list[str],
+        project_id: str | None = None,
+        require_project_id: bool = False,
+    ) -> dict[str, Any]:
         selected = self._normalize_providers(providers)
         report: dict[str, Any] = {
             "status": "installed",
@@ -72,7 +109,7 @@ class IntegrationInstaller:
             "conflicts": [],
             "providers": [],
         }
-        self._preflight_install(selected, project_id)
+        self._preflight_install(selected, project_id, require_project_id)
         snapshot_paths = self._install_snapshot_paths(selected)
         with tempfile.TemporaryDirectory(prefix="sdlc-manager-install-") as temporary:
             snapshot = self._snapshot_paths(snapshot_paths, Path(temporary))
@@ -93,9 +130,27 @@ class IntegrationInstaller:
                 raise
         return report
 
-    def _preflight_install(self, providers: list[str], project_id: str | None) -> None:
+    def _preflight_install(
+        self,
+        providers: list[str],
+        project_id: str | None,
+        require_project_id: bool = False,
+    ) -> None:
         if project_id:
             self._validate_project_config(project_id)
+        elif require_project_id and self.scope.name == "project":
+            path = self.state_root / "config.json"
+            if not path.is_file():
+                raise IntegrationError(
+                    "init requiere --project-id o un .sdlc-manager/config.json existente"
+                )
+            current = self._read_json(path)
+            existing = current.get("project_id")
+            if not isinstance(existing, str):
+                raise IntegrationError(
+                    "init requiere un project_id UUID en .sdlc-manager/config.json"
+                )
+            self._validate_project_config(existing)
         for provider in providers:
             getattr(self, f"_preflight_{provider.replace('-', '_')}")()
 
@@ -139,7 +194,7 @@ class IntegrationInstaller:
         self._assert_owned_or_absent(self.state_root / "instructions" / "opencode.md")
 
     def _preflight_codex(self) -> None:
-        source = Path(__file__).resolve().parents[4] / "integrations" / "codex" / "plugin"
+        source = self.manager_root / "integrations" / "codex" / "plugin"
         target = self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin"
         if not source.is_dir():
             raise IntegrationError(f"asset de proveedor no encontrado: {source}")
@@ -151,9 +206,8 @@ class IntegrationInstaller:
             existing_files = [item for item in target.rglob("*") if item.is_file()]
             if existing_files and not target_owned:
                 raise IntegrationError(f"el destino contiene archivos ajenos: {target}")
-        self._validate_json_mutation(
-            self.scope.root / ".codex" / "hooks.json", self._merge_codex_hooks
-        )
+        self._validate_json_mutation(self._codex_marketplace(), self._merge_codex_marketplace)
+        self._validate_codex_plugin_config(self._codex_config())
 
     def _install_snapshot_paths(self, providers: list[str]) -> list[Path]:
         paths = {self.state_root}
@@ -279,7 +333,8 @@ class IntegrationInstaller:
                 root / ".opencode" / "plugins" / "sdlc-manager",
             ]
         return [
-            root / ".codex" / "hooks.json",
+            root / ".codex" / "config.toml",
+            root / ".agents" / "plugins" / "marketplace.json",
             root / ".sdlc-manager" / "providers" / "codex-plugin",
         ]
 
@@ -311,7 +366,7 @@ class IntegrationInstaller:
             hook,
             self._asset(
                 "integrations/kiro/hooks/sdlc-file-save.installed.json",
-                {"__SDLC_MANAGER_ROOT__": self._manager_root_literal()},
+                {"__SDLC_MANAGER_COMMAND__": self._runtime_command_shell()},
             ),
             report,
         )
@@ -341,7 +396,9 @@ class IntegrationInstaller:
             plugin,
             self._asset(
                 "integrations/opencode/plugin/index.ts",
-                {"__SDLC_MANAGER_ROOT__": self._manager_root_literal()},
+                {
+                    "__SDLC_MANAGER_COMMAND_JSON__": json.dumps(self._runtime_command()),
+                },
             ),
             report,
         )
@@ -350,18 +407,26 @@ class IntegrationInstaller:
     def _install_codex(self, report: dict[str, Any]) -> None:
         target = self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin"
         self._copy_tree(
-            Path(__file__).resolve().parents[4] / "integrations" / "codex" / "plugin",
+            self.manager_root / "integrations" / "codex" / "plugin",
             target,
             report,
-            {"__SDLC_MANAGER_ROOT__": self._manager_root_literal()},
+            {
+                "__SDLC_MANAGER_ROOT__": self._manager_root_literal(),
+                "__SDLC_MANAGER_COMMAND__": self._runtime_command_shell(),
+                "__SDLC_MANAGER_COMMAND_JSON__": json.dumps(self._runtime_command()),
+            },
         )
         self._write_owned(target / ".sdlc-manager.manifest", MANAGED_MARKER + "\n", report)
-        self._merge_json(self.scope.root / ".codex" / "hooks.json", self._merge_codex_hooks, report)
+        self._remove_codex_mcp_config(self._codex_config(), report)
+        self._remove_codex_hooks(self.scope.root / ".codex" / "hooks.json", report)
+        self._merge_json(self._codex_marketplace(), self._merge_codex_marketplace, report)
+        self._merge_codex_plugin_config(self._codex_config(), report)
         self._write_owned(
             self.state_root / "instructions" / "codex.md", self._instructions(), report
         )
         report["warnings"].append(
-            "Codex requiere confiar los hooks del proyecto antes de ejecutarlos"
+            "Codex requiere confiar el proyecto y habilitar el plugin local "
+            "antes de ejecutar sus hooks"
         )
 
     def _uninstall_kiro(self, report: dict[str, Any]) -> None:
@@ -394,7 +459,10 @@ class IntegrationInstaller:
         self._remove_owned(self.state_root / "instructions" / "opencode.md", report)
 
     def _uninstall_codex(self, report: dict[str, Any]) -> None:
+        self._remove_codex_mcp_config(self._codex_config(), report)
         self._remove_codex_hooks(self.scope.root / ".codex" / "hooks.json", report)
+        self._remove_codex_plugin_config(self._codex_config(), report)
+        self._remove_codex_marketplace(self._codex_marketplace(), report)
         self._remove_owned_tree(
             self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin", report
         )
@@ -431,59 +499,180 @@ class IntegrationInstaller:
         hooks = data.setdefault("hooks", {})
         if not isinstance(hooks, dict):
             raise IntegrationError("hooks de Codex no es un objeto")
-        script = (
-            self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin" / "hooks" / "event.py"
-        )
-        command = shlex.join(
-            [
-                "uv",
-                "--project",
-                str(self.manager_root),
-                "run",
-                "--frozen",
-                "python",
-                str(script),
-            ]
-        )
+        command = f"{self._runtime_command_shell()} hook codex"
+        marker = "sdlc-manager-managed:codex"
         for event_name in ("SessionStart", "UserPromptSubmit", "PostToolUse"):
             entries = hooks.setdefault(event_name, [])
             if not isinstance(entries, list):
                 raise IntegrationError(f"hooks.{event_name} de Codex no es una lista")
-            if any(command in json.dumps(item, sort_keys=True) for item in entries):
+            if any(
+                command in json.dumps(item, sort_keys=True)
+                or marker in json.dumps(item, sort_keys=True)
+                for item in entries
+            ):
                 continue
             entries.append(
                 {
                     "hooks": [
                         {
                             "type": "command",
-                            "command": f"{command} {event_name}",
-                            "statusMessage": "Reviewing SDLC Manager context",
+                            "command": f"{command} --event {event_name}",
+                            "statusMessage": "sdlc-manager-managed:codex",
                             "additionalContextLimit": 1200,
                         }
                     ]
                 }
             )
 
+    def _merge_codex_marketplace(self, data: dict[str, Any]) -> None:
+        name = data.get("name")
+        if name is not None and name != CODEX_MARKETPLACE_NAME:
+            raise IntegrationError("el marketplace local de Codex tiene otro nombre")
+        data["name"] = CODEX_MARKETPLACE_NAME
+        interface = data.setdefault("interface", {})
+        if not isinstance(interface, dict):
+            raise IntegrationError("interface del marketplace de Codex no es un objeto")
+        interface.setdefault("displayName", "SDLC Manager")
+        plugins = data.setdefault("plugins", [])
+        if not isinstance(plugins, list):
+            raise IntegrationError("plugins del marketplace de Codex no es una lista")
+        expected = {
+            "name": "sdlc-manager",
+            "source": {
+                "source": "local",
+                "path": "./.sdlc-manager/providers/codex-plugin",
+            },
+            "policy": {
+                "installation": "INSTALLED_BY_DEFAULT",
+                "authentication": "ON_INSTALL",
+            },
+            "category": "Productivity",
+        }
+        existing = next(
+            (
+                item
+                for item in plugins
+                if isinstance(item, dict) and item.get("name") == "sdlc-manager"
+            ),
+            None,
+        )
+        if existing is not None and existing != expected:
+            raise IntegrationError("el plugin sdlc-manager ya existe con otra configuracion")
+        if existing is None:
+            plugins.append(expected)
+
+    def _merge_codex_plugin_config(self, path: Path, report: dict[str, Any]) -> None:
+        existing = path.read_text(encoding="utf-8") if path.is_file() else ""
+        self._write_text(path, self._render_codex_plugin_config(existing), report)
+
+    def _render_codex_plugin_config(self, existing: str) -> str:
+        has_start = CODEX_PLUGIN_START in existing
+        has_end = CODEX_PLUGIN_END in existing
+        if has_start != has_end:
+            raise IntegrationError("marcadores incompletos del plugin de Codex")
+        if has_start:
+            before = existing.split(CODEX_PLUGIN_START, 1)[0].rstrip()
+            after = existing.split(CODEX_PLUGIN_END, 1)[1].lstrip()
+            existing = "\n\n".join(part for part in (before, after) if part)
+        try:
+            parsed = tomllib.loads(existing) if existing.strip() else {}
+        except tomllib.TOMLDecodeError as error:
+            raise IntegrationError("no se puede leer TOML de forma segura para Codex") from error
+        plugins = parsed.get("plugins")
+        if isinstance(plugins, dict):
+            configured = plugins.get(f"sdlc-manager@{CODEX_MARKETPLACE_NAME}")
+            if configured is not None and configured != {"enabled": True}:
+                raise IntegrationError("el plugin sdlc-manager ya existe con otra configuracion")
+        block = (
+            f"{CODEX_PLUGIN_START}\n"
+            f'[plugins."sdlc-manager@{CODEX_MARKETPLACE_NAME}"]\n'
+            "enabled = true\n"
+            f"{CODEX_PLUGIN_END}\n"
+        )
+        content = f"{existing.rstrip()}\n\n{block}" if existing else block
+        try:
+            tomllib.loads(content)
+        except tomllib.TOMLDecodeError as error:
+            raise IntegrationError(
+                "la configuracion del plugin de Codex no es TOML valido"
+            ) from error
+        return content
+
+    def _validate_codex_plugin_config(self, path: Path) -> None:
+        existing = path.read_text(encoding="utf-8") if path.is_file() else ""
+        self._render_codex_plugin_config(existing)
+
+    def _remove_codex_plugin_config(self, path: Path, report: dict[str, Any]) -> None:
+        if not path.is_file():
+            return
+        existing = path.read_text(encoding="utf-8")
+        has_start = CODEX_PLUGIN_START in existing
+        has_end = CODEX_PLUGIN_END in existing
+        if not has_start and not has_end:
+            return
+        if has_start != has_end:
+            raise IntegrationError("marcadores incompletos del plugin de Codex")
+        before = existing.split(CODEX_PLUGIN_START, 1)[0].rstrip()
+        after = existing.split(CODEX_PLUGIN_END, 1)[1].lstrip()
+        remaining = "\n\n".join(part for part in (before, after) if part)
+        if remaining:
+            self._write_text(path, remaining + "\n", report)
+        else:
+            self._remove_owned(path, report)
+
+    def _codex_marketplace(self) -> Path:
+        return self.scope.root / ".agents" / "plugins" / "marketplace.json"
+
+    def _remove_codex_marketplace(self, path: Path, report: dict[str, Any]) -> None:
+        if not path.is_file():
+            return
+        data = self._read_json(path)
+        plugins = data.get("plugins")
+        if not isinstance(plugins, list):
+            return
+        expected_path = "./.sdlc-manager/providers/codex-plugin"
+        filtered = [
+            item
+            for item in plugins
+            if not (
+                isinstance(item, dict)
+                and item.get("name") == "sdlc-manager"
+                and isinstance(item.get("source"), dict)
+                and item["source"].get("path") == expected_path
+            )
+        ]
+        if len(filtered) == len(plugins):
+            return
+        if (
+            not filtered
+            and data.get("name") == CODEX_MARKETPLACE_NAME
+            and data.get("interface") == {"displayName": "SDLC Manager"}
+            and set(data) == {"name", "interface", "plugins"}
+        ):
+            report["backups"].append(self._backup(path))
+            path.unlink()
+            report["actions"].append({"path": str(path), "status": "removed"})
+            return
+        data["plugins"] = filtered
+        self._write_json(path, data, report)
+
     def _merge_claude_hooks(self, data: dict[str, Any]) -> None:
         hooks = data.setdefault("hooks", {})
-        entries = hooks.setdefault("PostToolUse", [])
-        marker = "integrations/claude-code/hook_event.py"
-        if not isinstance(entries, list):
-            raise IntegrationError("hooks.PostToolUse no es una lista")
-        if not any(marker in json.dumps(item, sort_keys=True) for item in entries):
-            command = shlex.join(
-                [
-                    "uv",
-                    "--project",
-                    str(self.manager_root),
-                    "run",
-                    "python",
-                    str(self.manager_root / "integrations/claude-code/hook_event.py"),
-                    "--source",
-                    "claude-code",
-                    "--format",
-                    "claude",
-                ]
+        marker = "sdlc-manager-managed:claude"
+        legacy_marker = "integrations/claude-code/hook_event.py"
+        for event_name in ("SessionStart", "UserPromptSubmit", "PostToolUse"):
+            entries = hooks.setdefault(event_name, [])
+            if not isinstance(entries, list):
+                raise IntegrationError(f"hooks.{event_name} no es una lista")
+            if any(
+                marker in json.dumps(item, sort_keys=True)
+                or legacy_marker in json.dumps(item, sort_keys=True)
+                for item in entries
+            ):
+                continue
+            command = (
+                f"{self._runtime_command_shell()} hook claude-code "
+                f"--format claude --event {event_name}"
             )
             entries.append(
                 {
@@ -491,6 +680,7 @@ class IntegrationInstaller:
                         {
                             "type": "command",
                             "command": command,
+                            "statusMessage": marker,
                         }
                     ]
                 }
@@ -504,42 +694,26 @@ class IntegrationInstaller:
         target[key] = value
 
     def _kiro_server(self) -> dict[str, Any]:
+        command = self._runtime_command()
         return {
-            "command": "uv",
-            "args": [
-                "--directory",
-                str(self.manager_root),
-                "run",
-                "--frozen",
-                "sdlc-manager",
-            ],
+            "command": command[0],
+            "args": command[1:],
             "disabled": False,
         }
 
     def _claude_server(self) -> dict[str, Any]:
+        command = self._runtime_command()
         return {
             "type": "stdio",
-            "command": "uv",
-            "args": [
-                "--directory",
-                str(self.manager_root),
-                "run",
-                "--frozen",
-                "sdlc-manager",
-            ],
+            "command": command[0],
+            "args": command[1:],
         }
 
     def _opencode_server(self) -> dict[str, Any]:
+        command = self._runtime_command()
         return {
             "type": "local",
-            "command": [
-                "uv",
-                "--directory",
-                str(self.manager_root),
-                "run",
-                "--frozen",
-                "sdlc-manager",
-            ],
+            "command": command,
             "cwd": ".",
             "codemode": False,
         }
@@ -550,6 +724,66 @@ class IntegrationInstaller:
         data = self._read_json(path) if path.is_file() else {}
         mutator(data)
         self._write_json(path, data, report)
+
+    def _codex_config(self) -> Path:
+        return self.scope.root / ".codex" / "config.toml"
+
+    def _codex_mcp_block(self) -> str:
+        command = self._runtime_command()
+        args = command[1:]
+        return (
+            f"{CODEX_MCP_START}\n"
+            "[mcp_servers.sdlc-manager]\n"
+            f"command = {json.dumps(command[0])}\n"
+            f"args = {json.dumps(args, ensure_ascii=False)}\n"
+            'cwd = "."\n'
+            f"{CODEX_MCP_END}\n"
+        )
+
+    def _render_codex_mcp_config(self, existing: str) -> str:
+        has_start = CODEX_MCP_START in existing
+        has_end = CODEX_MCP_END in existing
+        if has_start != has_end:
+            raise IntegrationError("marcadores incompletos en la configuracion MCP de Codex")
+
+        if has_start:
+            before = existing.split(CODEX_MCP_START, 1)[0].rstrip()
+            after = existing.split(CODEX_MCP_END, 1)[1].lstrip()
+            existing = "\n\n".join(part for part in (before, after) if part)
+        else:
+            try:
+                parsed = tomllib.loads(existing) if existing.strip() else {}
+            except tomllib.TOMLDecodeError as error:
+                raise IntegrationError(
+                    "no se puede leer TOML de forma segura para Codex"
+                ) from error
+            servers = parsed.get("mcp_servers")
+            if isinstance(servers, dict) and "sdlc-manager" in servers:
+                raise IntegrationError(
+                    "mcp_servers.sdlc-manager ya existe con una configuracion ajena"
+                )
+            if re.search(r"(?m)^\[mcp_servers\.sdlc-manager\]\s*$", existing):
+                raise IntegrationError(
+                    "mcp_servers.sdlc-manager ya existe con una configuracion ajena"
+                )
+
+        block = self._codex_mcp_block()
+        content = f"{existing.rstrip()}\n\n{block}" if existing else block
+        try:
+            tomllib.loads(content)
+        except tomllib.TOMLDecodeError as error:
+            raise IntegrationError(
+                "la configuracion MCP generada para Codex no es TOML valido"
+            ) from error
+        return content
+
+    def _merge_codex_mcp_config(self, path: Path, report: dict[str, Any]) -> None:
+        existing = path.read_text(encoding="utf-8") if path.is_file() else ""
+        self._write_text(path, self._render_codex_mcp_config(existing), report)
+
+    def _validate_codex_mcp_config(self, path: Path) -> None:
+        existing = path.read_text(encoding="utf-8") if path.is_file() else ""
+        self._render_codex_mcp_config(existing)
 
     def _validate_json_mutation(
         self, path: Path, mutator: Callable[[dict[str, Any]], None]
@@ -664,19 +898,50 @@ class IntegrationInstaller:
         del entries[key]
         self._write_json(path, data, report)
 
+    def _remove_codex_mcp_config(self, path: Path, report: dict[str, Any]) -> None:
+        if not path.is_file():
+            return
+        existing = path.read_text(encoding="utf-8")
+        has_start = CODEX_MCP_START in existing
+        has_end = CODEX_MCP_END in existing
+        if not has_start and not has_end:
+            return
+        if has_start != has_end:
+            raise IntegrationError("marcadores incompletos en la configuracion MCP de Codex")
+        before = existing.split(CODEX_MCP_START, 1)[0].rstrip()
+        after = existing.split(CODEX_MCP_END, 1)[1].lstrip()
+        remaining = "\n\n".join(part for part in (before, after) if part)
+        if not remaining:
+            self._remove_owned(path, report)
+            return
+        self._write_text(path, remaining + "\n", report)
+
     def _remove_json_hooks(self, path: Path, report: dict[str, Any]) -> None:
         self._remove_hooks_by_marker(
-            path, report, "integrations/claude-code/hook_event.py", drop_empty_hooks=False
+            path,
+            report,
+            ("sdlc-manager-managed:claude", "integrations/claude-code/hook_event.py"),
+            drop_empty_hooks=False,
         )
 
     def _remove_codex_hooks(self, path: Path, report: dict[str, Any]) -> None:
         script = (
             self.scope.root / ".sdlc-manager" / "providers" / "codex-plugin" / "hooks" / "event.py"
         )
-        self._remove_hooks_by_marker(path, report, str(script), drop_empty_hooks=True)
+        self._remove_hooks_by_marker(
+            path,
+            report,
+            ("sdlc-manager-managed:codex", str(script)),
+            drop_empty_hooks=True,
+        )
 
     def _remove_hooks_by_marker(
-        self, path: Path, report: dict[str, Any], marker: str, *, drop_empty_hooks: bool
+        self,
+        path: Path,
+        report: dict[str, Any],
+        marker: str | tuple[str, ...],
+        *,
+        drop_empty_hooks: bool,
     ) -> None:
         if not path.is_file():
             return
@@ -688,7 +953,12 @@ class IntegrationInstaller:
         for name, entries in list(hooks.items()):
             if not isinstance(entries, list):
                 continue
-            filtered = [item for item in entries if marker not in json.dumps(item, sort_keys=True)]
+            markers = (marker,) if isinstance(marker, str) else marker
+            filtered = [
+                item
+                for item in entries
+                if not any(value in json.dumps(item, sort_keys=True) for value in markers)
+            ]
             changed = changed or len(filtered) != len(entries)
             if filtered:
                 hooks[name] = filtered
@@ -765,11 +1035,17 @@ class IntegrationInstaller:
         manifest = target / ".sdlc-manager.manifest"
         target_owned = manifest.is_file() and MANAGED_MARKER in manifest.read_text(encoding="utf-8")
         if target.exists() and not target_owned:
-            existing_files = [item for item in target.rglob("*") if item.is_file()]
+            existing_files = [
+                item
+                for item in target.rglob("*")
+                if item.is_file() and "__pycache__" not in item.parts
+            ]
             if existing_files:
                 raise IntegrationError(f"el destino contiene archivos ajenos: {target}")
         for item in sorted(source.rglob("*")):
             relative = item.relative_to(source)
+            if "__pycache__" in relative.parts or item.suffix in {".pyc", ".pyo"}:
+                continue
             destination = target / relative
             if item.is_dir():
                 destination.mkdir(parents=True, exist_ok=True)
@@ -807,7 +1083,17 @@ class IntegrationInstaller:
 
     @staticmethod
     def _asset(relative: str, replacements: dict[str, str] | None = None) -> str:
-        root = Path(__file__).resolve().parents[4]
+        current = Path(__file__).resolve()
+        root = next(
+            (
+                parent
+                for parent in current.parents
+                if (parent / "integrations").is_dir() and (parent / "knowledge").is_dir()
+            ),
+            None,
+        )
+        if root is None:
+            raise IntegrationError("no se encontraron los assets de la integracion")
         content = (root / relative).read_text(encoding="utf-8")
         for old, new in (replacements or {}).items():
             content = content.replace(old, new)

@@ -84,14 +84,19 @@ def _timestamp(value: Any) -> str:
     return "1970-01-01T00:00:00Z"
 
 
-def project_id_from_environment() -> str | None:
+def project_id_from_environment(project_root: Path | str | None = None) -> str | None:
     configured = os.environ.get("SDLC_MANAGER_PROJECT_ID")
     if configured:
         return configured
-    config_path = Path.cwd() / ".sdlc-manager" / "config.json"
-    try:
-        config = json.loads(config_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    project_id = config.get("project_id") if isinstance(config, dict) else None
-    return project_id if isinstance(project_id, str) and project_id else None
+    roots = [Path(project_root).expanduser()] if project_root else []
+    roots.append(Path.cwd())
+    for root in dict.fromkeys(path.resolve() for path in roots):
+        config_path = root / ".sdlc-manager" / "config.json"
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        project_id = config.get("project_id") if isinstance(config, dict) else None
+        if isinstance(project_id, str) and project_id:
+            return project_id
+    return None

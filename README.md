@@ -245,6 +245,19 @@ uv run sdlc-manager integrations install kiro --project-root /ruta/al/proyecto -
 uv run sdlc-manager integrations status --project-root /ruta/al/proyecto
 ```
 
+Para instalar la superficie automatica completa de un proveedor en un
+proyecto, revisar primero el plan y luego usar:
+
+```bash
+uv run sdlc-manager init codex \
+  --project-root /ruta/al/proyecto \
+  --project-id UUID_DEL_PROYECTO
+```
+
+`init` configura MCP y hooks o plugins del proveedor en alcance de proyecto;
+no modifica perfiles globales. MCP expone herramientas, mientras los hooks y
+plugins invocan el CLI para entregar recomendaciones automaticamente.
+
 El instalador crea únicamente recursos propios de SDLC Manager, conserva las
 entradas ajenas, genera backups cuando modifica archivos y permite retirar
 selectivamente una integración:

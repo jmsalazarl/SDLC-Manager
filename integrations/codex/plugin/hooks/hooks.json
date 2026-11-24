@@ -6,8 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv --project \"__SDLC_MANAGER_ROOT__\" run --frozen python \"${PLUGIN_ROOT}/hooks/event.py\" SessionStart",
-            "statusMessage": "Loading SDLC Manager context",
+            "command": "__SDLC_MANAGER_COMMAND__ hook codex --event SessionStart",
+            "statusMessage": "sdlc-manager-managed:codex",
             "additionalContextLimit": 1200
           }
         ]
@@ -18,8 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv --project \"__SDLC_MANAGER_ROOT__\" run --frozen python \"${PLUGIN_ROOT}/hooks/event.py\" UserPromptSubmit",
-            "statusMessage": "Reviewing SDLC Manager context",
+            "command": "__SDLC_MANAGER_COMMAND__ hook codex --event UserPromptSubmit",
+            "statusMessage": "sdlc-manager-managed:codex",
             "additionalContextLimit": 1200
           }
         ]
@@ -30,8 +30,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv --project \"__SDLC_MANAGER_ROOT__\" run --frozen python \"${PLUGIN_ROOT}/hooks/event.py\" PostToolUse",
-            "statusMessage": "Reviewing SDLC Manager context",
+            "command": "__SDLC_MANAGER_COMMAND__ hook codex --event PostToolUse",
+            "statusMessage": "sdlc-manager-managed:codex",
             "additionalContextLimit": 1200
           }
         ]
